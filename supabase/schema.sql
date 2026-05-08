@@ -1,12 +1,8 @@
--- Enable RLS
-alter table if exists public.receipts enable row level security;
-alter table if exists public.items enable row level security;
-
 -- Categories (seeded, not user-editable for now)
 create table public.categories (
   id   serial primary key,
   name text not null unique,
-  color text not null
+  color text not null  -- hex color for UI badges
 );
 
 insert into public.categories (name, color) values
@@ -23,6 +19,7 @@ insert into public.categories (name, color) values
   ('Dining',            '#f59e0b'),
   ('Other',             '#94a3b8');
 
+-- Receipts
 create table public.receipts (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid references auth.users(id) on delete cascade not null,
@@ -33,16 +30,23 @@ create table public.receipts (
   created_at  timestamptz default now()
 );
 
+-- Items (line items from a receipt)
 create table public.items (
   id          uuid primary key default gen_random_uuid(),
   receipt_id  uuid references public.receipts(id) on delete cascade not null,
   name        text not null,
-  raw_name    text,
+  raw_name    text,         -- original Polish text from receipt
   price       numeric(10,2) not null,
   category_id integer references public.categories(id),
   created_at  timestamptz default now()
 );
 
+-- Enable RLS (must come after CREATE TABLE)
+alter table public.receipts enable row level security;
+alter table public.items enable row level security;
+alter table public.categories enable row level security;
+
+-- RLS policies: users can only see their own data
 create policy "Users see own receipts"
   on public.receipts for all
   using (auth.uid() = user_id);
@@ -55,11 +59,19 @@ create policy "Users see own items"
     )
   );
 
+-- Categories are public read
 create policy "Anyone reads categories"
   on public.categories for select
   using (true);
 
-insert into storage.buckets (id, name, public) values ('receipts', 'receipts', false);
+-- Grants
+grant usage on schema public to anon, authenticated;
+grant all on public.receipts to authenticated;
+grant all on public.items to authenticated;
+grant select on public.categories to anon, authenticated;
+
+-- Storage bucket for receipt images (public so images display in the app)
+insert into storage.buckets (id, name, public) values ('receipts', 'receipts', true);
 
 create policy "Users manage own receipt images"
   on storage.objects for all
