@@ -1,5 +1,5 @@
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent';
 
 const SYSTEM_PROMPT = `You are a receipt parser. Extract all purchased line items from the receipt image.
 The receipt may be in Polish or any other language.
