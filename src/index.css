@@ -981,9 +981,13 @@ a {
 }
 .budget-edit-row {
   display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.budget-edit-controls {
+  display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 .budget-edit-name {
   flex: 1;

@@ -348,27 +348,29 @@ export default function Analytics() {
               <div className="budget-edit-panel">
                 {allGroups.map(grp => (
                   <div key={grp.id} className="budget-edit-row">
-                    <span className="cat-dot" style={{ background: grp.color }} />
-                    <span className="budget-edit-name">{t('categoryGroups')[grp.name] || grp.name}</span>
-                    <button
-                      className="btn-hint"
-                      onClick={() => setActiveHint(activeHint === grp.name ? null : grp.name)}
-                      aria-label="Info"
-                    >?</button>
+                    <div className="budget-edit-controls">
+                      <span className="cat-dot" style={{ background: grp.color }} />
+                      <span className="budget-edit-name">{t('categoryGroups')[grp.name] || grp.name}</span>
+                      <button
+                        className="btn-hint"
+                        onClick={() => setActiveHint(activeHint === grp.name ? null : grp.name)}
+                        aria-label="Info"
+                      >?</button>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="form-input budget-edit-input"
+                        value={budgetInputs[grp.id] ?? ''}
+                        onChange={e => setBudgetInputs(prev => ({ ...prev, [grp.id]: e.target.value }))}
+                        onBlur={e => handleBudgetBlur(grp.id, e.target.value)}
+                        placeholder="0"
+                      />
+                      <span className="budget-edit-currency">PLN</span>
+                    </div>
                     {activeHint === grp.name && (
                       <span className="hint-bubble">{t('categoryGroupHints')?.[grp.name]}</span>
                     )}
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="form-input budget-edit-input"
-                      value={budgetInputs[grp.id] ?? ''}
-                      onChange={e => setBudgetInputs(prev => ({ ...prev, [grp.id]: e.target.value }))}
-                      onBlur={e => handleBudgetBlur(grp.id, e.target.value)}
-                      placeholder="0"
-                    />
-                    <span className="budget-edit-currency">PLN</span>
                   </div>
                 ))}
               </div>
