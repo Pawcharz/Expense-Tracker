@@ -6,14 +6,8 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function formatTime(isoStr) {
-  if (!isoStr) return null;
-  return new Date(isoStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-}
-
 export default function ReceiptCard({ receipt }) {
   const navigate = useNavigate();
-  const time = formatTime(receipt.created_at);
 
   return (
     <div className="receipt-card" onClick={() => navigate(`/receipt/${receipt.id}`)}>
@@ -24,9 +18,7 @@ export default function ReceiptCard({ receipt }) {
         </span>
       </div>
       <div className="receipt-card-footer">
-        <span className="receipt-date">
-          {formatDate(receipt.date)}{time ? ` · ${time}` : ''}
-        </span>
+        <span className="receipt-date">{formatDate(receipt.date)}</span>
         {receipt.item_count != null && (
           <span className="receipt-items">{receipt.item_count} item{receipt.item_count !== 1 ? 's' : ''}</span>
         )}

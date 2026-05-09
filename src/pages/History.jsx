@@ -2,17 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import ReceiptCard from '../components/ReceiptCard';
-
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 
 const PAGE_SIZE = 20;
 
 export default function History() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -132,13 +129,14 @@ export default function History() {
   }
 
   const isSearching = debouncedSearch.trim().length > 0;
+  const monthNames = t('monthNames');
 
   return (
     <div className="history-page page">
       {!isSearching && (
         <div className="month-selector">
           <button className="btn-icon" onClick={prevMonth}><ChevronLeft size={20} /></button>
-          <span className="month-label">{MONTHS[month]} {year}</span>
+          <span className="month-label">{monthNames[month]} {year}</span>
           <button className="btn-icon" onClick={nextMonth}><ChevronRight size={20} /></button>
         </div>
       )}
@@ -148,7 +146,7 @@ export default function History() {
         <input
           type="text"
           className="search-input"
-          placeholder="Search stores or items…"
+          placeholder={t('searchPlaceholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -171,8 +169,8 @@ export default function History() {
       ) : receipts.length === 0 ? (
         <div className="empty-state">
           {isSearching
-            ? <p>No results for "{debouncedSearch}"</p>
-            : <p>No receipts for {MONTHS[month]} {year}</p>
+            ? <p>{t('noResultsFor')} "{debouncedSearch}"</p>
+            : <p>{t('noReceiptsFor')} {monthNames[month]} {year}</p>
           }
         </div>
       ) : (
@@ -180,7 +178,7 @@ export default function History() {
           {receipts.map(r => <ReceiptCard key={r.id} receipt={r} />)}
           {!isSearching && hasMore && (
             <button className="btn btn-secondary load-more" onClick={loadMore} disabled={loading}>
-              {loading ? 'Loading…' : 'Load more'}
+              {loading ? t('loadingText') : t('loadMore')}
             </button>
           )}
         </>

@@ -6,18 +6,11 @@ import {
 } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-const MONTHS_FULL = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function Analytics() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -144,6 +137,7 @@ export default function Analytics() {
   }
 
   async function loadTrend() {
+    const monthNamesShort = t('monthNamesShort');
     const months = [];
     for (let i = trendSpan - 1; i >= 0; i--) {
       let m = month - i;
@@ -166,7 +160,7 @@ export default function Analytics() {
         .lt('date', to);
 
       const total = (data || []).reduce((sum, r) => sum + (parseFloat(r.total) || 0), 0);
-      return { label: `${MONTHS[m]} ${y}`, total: parseFloat(total.toFixed(2)) };
+      return { label: `${monthNamesShort[m]} ${y}`, total: parseFloat(total.toFixed(2)) };
     }));
 
     setTrendData(results);
@@ -255,11 +249,13 @@ export default function Analytics() {
     })
     .sort((a, b) => b.pct - a.pct);
 
+  const monthNames = t('monthNames');
+
   return (
     <div className="analytics-page page">
       <div className="month-selector">
         <button className="btn-icon" onClick={prevMonth}><ChevronLeft size={20} /></button>
-        <span className="month-label">{MONTHS_FULL[month]} {year}</span>
+        <span className="month-label">{monthNames[month]} {year}</span>
         <button className="btn-icon" onClick={nextMonth}><ChevronRight size={20} /></button>
       </div>
 
@@ -272,9 +268,9 @@ export default function Analytics() {
       ) : (
         <>
           <section className="analytics-section">
-            <h3 className="section-title">Spending by Category</h3>
+            <h3 className="section-title">{t('spendingByCategory')}</h3>
             {categoryData.length === 0 ? (
-              <p className="text-muted">No data for this month.</p>
+              <p className="text-muted">{t('noDataMonth')}</p>
             ) : (
               <ResponsiveContainer width="100%" height={Math.max(180, categoryData.length * 40)}>
                 <BarChart data={categoryData} layout="vertical" margin={{ left: 8, right: 16 }}>
@@ -298,11 +294,11 @@ export default function Analytics() {
 
           <section className="analytics-section">
             <div className="section-header-row">
-              <h3 className="section-title">Budgets</h3>
+              <h3 className="section-title">{t('budgetsTitle')}</h3>
               <button
                 className="btn-icon btn-ghost-small"
                 onClick={() => setEditingBudgets(e => !e)}
-                title={editingBudgets ? 'Close' : 'Edit budgets'}
+                title={editingBudgets ? t('doneBudgets') : t('editBudgets')}
               >
                 {editingBudgets ? <X size={16} /> : <Pencil size={16} />}
               </button>
@@ -331,7 +327,7 @@ export default function Analytics() {
             )}
 
             {!editingBudgets && budgetProgressItems.length === 0 && (
-              <p className="text-muted">No budgets set. Click the pencil to add budgets.</p>
+              <p className="text-muted">{t('noDataPeriod')}</p>
             )}
 
             {!editingBudgets && budgetProgressItems.length > 0 && (
@@ -363,7 +359,7 @@ export default function Analytics() {
           </section>
 
           <section className="analytics-section">
-            <h3 className="section-title">Monthly Trend</h3>
+            <h3 className="section-title">{t('monthlyTrend')}</h3>
             <div className="trend-span-selector">
               {[6, 12, 24].map(n => (
                 <button
@@ -391,9 +387,9 @@ export default function Analytics() {
           </section>
 
           <section className="analytics-section">
-            <h3 className="section-title">Top Stores</h3>
+            <h3 className="section-title">{t('topStores')}</h3>
             {topStores.length === 0 ? (
-              <p className="text-muted">No data for this month.</p>
+              <p className="text-muted">{t('noDataMonth')}</p>
             ) : (
               <ol className="ranked-list">
                 {topStores.map((s, i) => (
@@ -408,9 +404,9 @@ export default function Analytics() {
           </section>
 
           <section className="analytics-section">
-            <h3 className="section-title">Top Items</h3>
+            <h3 className="section-title">{t('topItems')}</h3>
             {topItems.length === 0 ? (
-              <p className="text-muted">No data for this month.</p>
+              <p className="text-muted">{t('noDataMonth')}</p>
             ) : (
               <ol className="ranked-list">
                 {topItems.map((item, i) => (

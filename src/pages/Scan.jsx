@@ -2,10 +2,13 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Image, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
 import { parseReceiptImage, imageFileToBase64 } from '../lib/gemini';
+
 export default function Scan() {
   const { user } = useAuth();
+  const { language, t } = useLanguage();
   const navigate = useNavigate();
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -34,14 +37,14 @@ export default function Scan() {
         .from('receipts')
         .getPublicUrl(fileName);
 
-      const parsedData = await parseReceiptImage(base64, mimeType);
+      const parsedData = await parseReceiptImage(base64, mimeType, language);
 
       navigate('/review', {
         state: { parsedData, imageUrl: publicUrl, imageFile: file },
       });
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to process receipt');
+      setError(err.message || t('failedToProcess'));
     } finally {
       setLoading(false);
     }
@@ -58,13 +61,13 @@ export default function Scan() {
       {loading && (
         <div className="loading-overlay">
           <div className="loading-spinner" />
-          <p>Reading receipt…</p>
+          <p>{t('readingReceipt')}</p>
         </div>
       )}
 
       <div className="scan-content">
-        <h2 className="scan-title">Scan Receipt</h2>
-        <p className="scan-subtitle text-muted">Take a photo or upload from your gallery</p>
+        <h2 className="scan-title">{t('scanTitle')}</h2>
+        <p className="scan-subtitle text-muted">{t('scanSubtitle')}</p>
 
         <button
           className="btn-camera"
@@ -72,7 +75,7 @@ export default function Scan() {
           disabled={loading}
         >
           <Camera size={40} />
-          <span>Take Photo</span>
+          <span>{t('takePhoto')}</span>
         </button>
 
         <input
@@ -91,7 +94,7 @@ export default function Scan() {
           disabled={loading}
         >
           <Image size={18} />
-          <span>Choose from Gallery</span>
+          <span>{t('chooseGallery')}</span>
         </button>
 
         <input
@@ -108,7 +111,7 @@ export default function Scan() {
           onClick={() => navigate('/manual')}
           disabled={loading}
         >
-          Enter manually
+          {t('enterManually')}
         </button>
 
         {error && (
@@ -119,7 +122,7 @@ export default function Scan() {
               onClick={() => setError('')}
             >
               <RefreshCw size={16} />
-              Try again
+              {t('tryAgain')}
             </button>
           </div>
         )}

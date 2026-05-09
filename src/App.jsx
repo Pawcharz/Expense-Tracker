@@ -8,6 +8,7 @@ import History from './pages/History';
 import ReceiptDetail from './pages/ReceiptDetail';
 import Analytics from './pages/Analytics';
 import ManualEntry from './pages/ManualEntry';
+import Settings from './pages/Settings';
 
 const NO_NAV_PATHS = ['/login', '/review', '/manual'];
 
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/receipt/:id" element={<ReceiptDetail />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/manual" element={<ManualEntry />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
       {showNav && <BottomNav />}

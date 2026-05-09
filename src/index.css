@@ -630,7 +630,6 @@ main, .page {
 /* ── Receipt Detail ── */
 .detail-page {
   padding-top: 16px;
-  padding-bottom: 40px;
 }
 
 .detail-header {
@@ -1009,4 +1008,59 @@ a {
   display: flex;
   align-items: center;
   padding: 4px;
+}
+
+/* Settings page */
+.settings-page {
+  padding-top: 24px;
+}
+.settings-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 16px;
+}
+.lang-options {
+  display: flex;
+  gap: 8px;
+}
+.lang-btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.lang-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #8b5cf615;
+}
+.settings-email {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 0;
 }

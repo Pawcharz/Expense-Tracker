@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Trash2, Plus, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
 
 const CATEGORY_NAMES = [
@@ -9,8 +10,16 @@ const CATEGORY_NAMES = [
   'Drinks', 'Snacks', 'Household', 'Hygiene', 'Subscriptions', 'Dining', 'Other',
 ];
 
+const CATEGORY_KEYS = {
+  'Meat': 'categoryMeat', 'Dairy': 'categoryDairy', 'Vegetables': 'categoryVegetables',
+  'Fruit': 'categoryFruit', 'Bread & Bakery': 'categoryBread', 'Drinks': 'categoryDrinks',
+  'Snacks': 'categorySnacks', 'Household': 'categoryHousehold', 'Hygiene': 'categoryHygiene',
+  'Subscriptions': 'categorySubscriptions', 'Dining': 'categoryDining', 'Other': 'categoryOther',
+};
+
 export default function Review() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -93,7 +102,7 @@ export default function Review() {
 
       navigate('/history', { replace: true });
     } catch (err) {
-      setError(err.message || 'Failed to save receipt');
+      setError(err.message || t('failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -111,7 +120,7 @@ export default function Review() {
       )}
 
       <div className="review-header">
-        <h2>Review Receipt</h2>
+        <h2>{t('reviewTitle')}</h2>
         {imageUrl && (
           <img
             src={imageUrl}
@@ -123,18 +132,18 @@ export default function Review() {
       </div>
 
       <div className="form-group">
-        <label className="form-label">Store</label>
+        <label className="form-label">{t('storeLabel')}</label>
         <input
           type="text"
           className="form-input"
           value={store}
           onChange={e => setStore(e.target.value)}
-          placeholder="Store name"
+          placeholder={t('storePlaceholder')}
         />
       </div>
 
       <div className="form-group">
-        <label className="form-label">Date</label>
+        <label className="form-label">{t('dateLabel')}</label>
         <input
           type="date"
           className="form-input"
@@ -144,7 +153,7 @@ export default function Review() {
       </div>
 
       <div className="items-section">
-        <h3 className="section-title">Items</h3>
+        <h3 className="section-title">{t('itemsLabel')}</h3>
         {items.map(item => (
           <div key={item._id} className="item-row">
             <input
@@ -152,7 +161,7 @@ export default function Review() {
               className="form-input item-name"
               value={item.name}
               onChange={e => updateItem(item._id, 'name', e.target.value)}
-              placeholder="Item name"
+              placeholder={t('itemNamePlaceholder')}
             />
             <input
               type="number"
@@ -169,7 +178,7 @@ export default function Review() {
               onChange={e => updateItem(item._id, 'category', e.target.value)}
             >
               {CATEGORY_NAMES.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>{t(CATEGORY_KEYS[cat])}</option>
               ))}
             </select>
             <button
@@ -184,12 +193,12 @@ export default function Review() {
 
         <button className="btn btn-ghost add-item-btn" onClick={addItem}>
           <Plus size={16} />
-          Add item
+          {t('addItem')}
         </button>
       </div>
 
       <div className="total-row">
-        <span>Total</span>
+        <span>{t('totalLabel')}</span>
         <span className="total-amount" style={{ fontFamily: 'var(--font-mono)' }}>
           {total.toFixed(2)} PLN
         </span>
@@ -199,14 +208,14 @@ export default function Review() {
 
       <div className="review-actions">
         <button className="btn btn-ghost" onClick={() => navigate('/')}>
-          Discard
+          {t('discard')}
         </button>
         <button
           className="btn btn-primary"
           onClick={handleSave}
           disabled={saving}
         >
-          {saving ? 'Saving…' : 'Save receipt'}
+          {saving ? t('saving') : t('saveReceipt')}
         </button>
       </div>
     </div>

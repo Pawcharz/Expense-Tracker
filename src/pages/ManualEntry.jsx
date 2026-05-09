@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Plus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
 
 const CATEGORY_NAMES = [
@@ -9,8 +10,16 @@ const CATEGORY_NAMES = [
   'Drinks', 'Snacks', 'Household', 'Hygiene', 'Subscriptions', 'Dining', 'Other',
 ];
 
+const CATEGORY_KEYS = {
+  'Meat': 'categoryMeat', 'Dairy': 'categoryDairy', 'Vegetables': 'categoryVegetables',
+  'Fruit': 'categoryFruit', 'Bread & Bakery': 'categoryBread', 'Drinks': 'categoryDrinks',
+  'Snacks': 'categorySnacks', 'Household': 'categoryHousehold', 'Hygiene': 'categoryHygiene',
+  'Subscriptions': 'categorySubscriptions', 'Dining': 'categoryDining', 'Other': 'categoryOther',
+};
+
 export default function ManualEntry() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [store, setStore] = useState('');
@@ -71,7 +80,7 @@ export default function ManualEntry() {
 
       navigate('/history', { replace: true });
     } catch (err) {
-      setError(err.message || 'Failed to save receipt');
+      setError(err.message || t('failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -80,22 +89,22 @@ export default function ManualEntry() {
   return (
     <div className="review-page page">
       <div className="review-header">
-        <h2 className="review-title">New Receipt</h2>
+        <h2 className="review-title">{t('newReceiptTitle')}</h2>
       </div>
 
       <div className="review-form">
         <div className="form-group">
-          <label className="form-label">Store</label>
+          <label className="form-label">{t('storeLabel')}</label>
           <input
             className="form-input"
             value={store}
             onChange={e => setStore(e.target.value)}
-            placeholder="Store name"
+            placeholder={t('storePlaceholder')}
           />
         </div>
 
         <div className="form-group">
-          <label className="form-label">Date</label>
+          <label className="form-label">{t('dateLabel')}</label>
           <input
             type="date"
             className="form-input"
@@ -105,7 +114,7 @@ export default function ManualEntry() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Items</label>
+          <label className="form-label">{t('itemsLabel')}</label>
           <div className="items-editor">
             {items.map(item => (
               <div key={item._id} className="item-row">
@@ -113,7 +122,7 @@ export default function ManualEntry() {
                   className="form-input item-name"
                   value={item.name}
                   onChange={e => updateItem(item._id, 'name', e.target.value)}
-                  placeholder="Item name"
+                  placeholder={t('itemNamePlaceholder')}
                 />
                 <input
                   type="number"
@@ -128,7 +137,9 @@ export default function ManualEntry() {
                   value={item.category}
                   onChange={e => updateItem(item._id, 'category', e.target.value)}
                 >
-                  {CATEGORY_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {CATEGORY_NAMES.map(c => (
+                    <option key={c} value={c}>{t(CATEGORY_KEYS[c])}</option>
+                  ))}
                 </select>
                 <button
                   className="btn-icon btn-danger"
@@ -141,13 +152,13 @@ export default function ManualEntry() {
             ))}
             <button className="btn btn-ghost add-item-btn" onClick={addItem} type="button">
               <Plus size={16} />
-              Add item
+              {t('addItem')}
             </button>
           </div>
         </div>
 
         <div className="review-total">
-          <span>Total</span>
+          <span>{t('totalLabel')}</span>
           <span style={{ fontFamily: 'var(--font-mono)' }}>{total.toFixed(2)} PLN</span>
         </div>
 
@@ -159,14 +170,14 @@ export default function ManualEntry() {
             onClick={() => navigate('/')}
             disabled={saving}
           >
-            Discard
+            {t('discard')}
           </button>
           <button
             className="btn btn-primary"
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? 'Saving…' : 'Save Receipt'}
+            {saving ? t('saving') : t('saveReceipt')}
           </button>
         </div>
       </div>

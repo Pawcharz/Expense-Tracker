@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Trash2, ArrowLeft, Pencil, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import CategoryBadge from '../components/CategoryBadge';
 
 const CATEGORY_NAMES = [
@@ -10,20 +11,24 @@ const CATEGORY_NAMES = [
   'Drinks', 'Snacks', 'Household', 'Hygiene', 'Subscriptions', 'Dining', 'Other',
 ];
 
+const CATEGORY_KEYS = {
+  'Meat': 'categoryMeat', 'Dairy': 'categoryDairy', 'Vegetables': 'categoryVegetables',
+  'Fruit': 'categoryFruit', 'Bread & Bakery': 'categoryBread', 'Drinks': 'categoryDrinks',
+  'Snacks': 'categorySnacks', 'Household': 'categoryHousehold', 'Hygiene': 'categoryHygiene',
+  'Subscriptions': 'categorySubscriptions', 'Dining': 'categoryDining', 'Other': 'categoryOther',
+};
+
 function formatDate(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function formatTime(isoStr) {
-  if (!isoStr) return null;
-  return new Date(isoStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-}
 
 export default function ReceiptDetail() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [receipt, setReceipt] = useState(null);
   const [items, setItems] = useState([]);
@@ -137,7 +142,7 @@ export default function ReceiptDetail() {
       setItems(updatedItems || []);
       setEditing(false);
     } catch (err) {
-      setError(err.message || 'Failed to save changes');
+      setError(err.message || t('failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -184,7 +189,7 @@ export default function ReceiptDetail() {
             className="form-input"
             value={editStore}
             onChange={e => setEditStore(e.target.value)}
-            placeholder="Store name"
+            placeholder={t('storePlaceholder')}
             style={{ flex: 1, margin: '0 8px' }}
           />
         ) : (
@@ -192,9 +197,9 @@ export default function ReceiptDetail() {
         )}
         {editing ? (
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-ghost" onClick={cancelEditing} disabled={saving}>Cancel</button>
+            <button className="btn btn-ghost" onClick={cancelEditing} disabled={saving}>{t('cancel')}</button>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? t('saving') : t('saveChanges')}
             </button>
           </div>
         ) : (
@@ -225,9 +230,6 @@ export default function ReceiptDetail() {
         ) : (
           <span className="text-muted">
             {formatDate(receipt.date)}
-            {formatTime(receipt.created_at) && (
-              <span className="detail-time"> · {formatTime(receipt.created_at)}</span>
-            )}
           </span>
         )}
         <span className="detail-total" style={{ fontFamily: 'var(--font-mono)' }}>
@@ -245,7 +247,7 @@ export default function ReceiptDetail() {
                 className="form-input edit-item-name"
                 value={item.name}
                 onChange={e => updateEditItem(item._id, 'name', e.target.value)}
-                placeholder="Item name"
+                placeholder={t('itemNamePlaceholder')}
               />
               <input
                 type="number"
@@ -260,7 +262,9 @@ export default function ReceiptDetail() {
                 value={item.category}
                 onChange={e => updateEditItem(item._id, 'category', e.target.value)}
               >
-                {CATEGORY_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+                {CATEGORY_NAMES.map(c => (
+                  <option key={c} value={c}>{t(CATEGORY_KEYS[c])}</option>
+                ))}
               </select>
               <button className="btn-icon btn-danger" onClick={() => deleteEditItem(item._id)}>
                 <Trash2 size={16} />
@@ -269,7 +273,7 @@ export default function ReceiptDetail() {
           ))}
           <button className="btn btn-ghost" onClick={addEditItem} style={{ marginTop: '8px', width: '100%' }}>
             <Plus size={16} />
-            Add item
+            {t('addItem')}
           </button>
         </div>
       ) : (
@@ -301,14 +305,14 @@ export default function ReceiptDetail() {
       {confirmDelete && (
         <div className="confirm-overlay">
           <div className="confirm-dialog">
-            <h3>Delete receipt?</h3>
-            <p className="text-muted">This action cannot be undone.</p>
+            <h3>{t('deleteReceiptTitle')}</h3>
+            <p className="text-muted">{t('cannotUndo')}</p>
             <div className="confirm-actions">
               <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)}>
-                Cancel
+                {t('cancel')}
               </button>
               <button className="btn btn-danger" onClick={handleDelete} disabled={deleting}>
-                {deleting ? 'Deleting…' : 'Delete'}
+                {deleting ? t('deleting') : t('deleteBtn')}
               </button>
             </div>
           </div>
