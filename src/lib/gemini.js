@@ -129,7 +129,7 @@ async function ocrChunk(base64, mimeType, apiKey) {
       { text: OCR_PROMPT },
       { inline_data: { mime_type: mimeType, data: base64 } },
     ],
-    { temperature: 0, maxOutputTokens: 4096 }
+    { temperature: 0, maxOutputTokens: 8192 }
   );
 }
 
@@ -141,18 +141,18 @@ async function mergeOcrTexts(texts, apiKey) {
   return geminiCall(
     apiKey,
     [{ text: `${buildMergePrompt(texts.length)}\n\n${sections}` }],
-    { temperature: 0, maxOutputTokens: 4096 }
+    { temperature: 0, maxOutputTokens: 8192 }
   );
 }
 
 // Stage 3: Parse merged text → structured JSON
-async function parseReceiptText(text, language, apiKey) {
+async function parseReceiptText(text, language, apiKey, numChunks = 1) {
   const result = await geminiCall(
     apiKey,
     [{ text: `${buildParsePrompt(language)}\n\nReceipt text:\n${text}` }],
     {
       temperature: 0.1,
-      maxOutputTokens: 8192,
+      maxOutputTokens: Math.min(32768 * numChunks, 65536),
       responseMimeType: 'application/json',
       responseSchema: RESPONSE_SCHEMA,
     }
@@ -170,7 +170,7 @@ async function parseReceiptImageDirect(base64, mimeType, language, apiKey) {
     ],
     {
       temperature: 0.1,
-      maxOutputTokens: 8192,
+      maxOutputTokens: 32768,
       responseMimeType: 'application/json',
       responseSchema: RESPONSE_SCHEMA,
     }
@@ -192,7 +192,7 @@ export async function parseReceiptImage(chunks, language = 'en') {
     chunks.map(c => ocrChunk(c.base64, c.mimeType, apiKey))
   );
   const mergedText = await mergeOcrTexts(ocrTexts, apiKey);
-  return parseReceiptText(mergedText, language, apiKey);
+  return parseReceiptText(mergedText, language, apiKey, chunks.length);
 }
 
 export async function getImageChunks(file) {
@@ -206,7 +206,7 @@ export async function getImageChunks(file) {
     el.src = url;
   });
 
-  if (img.height <= img.width * 2.5) {
+  if (img.height <= img.width * 2.0) {
     return [{ base64: await imageFileToBase64(file), mimeType }];
   }
 
