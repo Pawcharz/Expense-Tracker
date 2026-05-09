@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Image, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -10,6 +10,7 @@ export default function Scan() {
   const { user } = useAuth();
   const { language, t } = useLanguage();
   const navigate = useNavigate();
+  const galleryInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -54,6 +55,27 @@ export default function Scan() {
     e.target.value = '';
   }
 
+  async function openGallery() {
+    if (loading) return;
+    // File System Access API — Chrome 147+ on Android, no storage permission needed
+    if (window.showOpenFilePicker) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'Images', accept: { 'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic'] } }],
+          multiple: false,
+        });
+        const file = await handle.getFile();
+        processFile(file);
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return; // user cancelled
+        // fall through to legacy input
+      }
+    }
+    // Fallback for older Chrome / Android versions
+    galleryInputRef.current?.click();
+  }
+
   return (
     <div className="scan-page page">
       {loading && (
@@ -77,24 +99,28 @@ export default function Scan() {
             type="file"
             accept="image/*"
             capture="environment"
-            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
             onChange={handleFileChange}
           />
         </label>
 
-        <label
-          className={`btn btn-secondary${loading ? ' btn-disabled' : ''}`}
-          style={{ marginTop: '16px', cursor: loading ? 'not-allowed' : 'pointer' }}
+        <button
+          className="btn btn-secondary"
+          style={{ marginTop: '16px' }}
+          onClick={openGallery}
+          disabled={loading}
         >
           <Image size={18} />
           <span>{t('chooseGallery')}</span>
-          <input
-            type="file"
-            accept="image/*"
-            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
-            onChange={handleFileChange}
-          />
-        </label>
+        </button>
+        {/* Fallback input for browsers without showOpenFilePicker */}
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+          onChange={handleFileChange}
+        />
 
         <button
           className="btn btn-ghost"
