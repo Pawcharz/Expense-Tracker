@@ -4,7 +4,6 @@ import { Camera, Image, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { parseReceiptImage, imageFileToBase64 } from '../lib/gemini';
-
 export default function Scan() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -102,6 +101,15 @@ export default function Scan() {
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
+
+        <button
+          className="btn btn-ghost"
+          style={{ marginTop: '12px', fontSize: '13px' }}
+          onClick={() => navigate('/manual')}
+          disabled={loading}
+        >
+          Enter manually
+        </button>
 
         {error && (
           <div className="error-box">

@@ -7,8 +7,9 @@ import Review from './pages/Review';
 import History from './pages/History';
 import ReceiptDetail from './pages/ReceiptDetail';
 import Analytics from './pages/Analytics';
+import ManualEntry from './pages/ManualEntry';
 
-const NO_NAV_PATHS = ['/login', '/review'];
+const NO_NAV_PATHS = ['/login', '/review', '/manual'];
 
 export default function App() {
   const location = useLocation();
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/history" element={<History />} />
           <Route path="/receipt/:id" element={<ReceiptDetail />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/manual" element={<ManualEntry />} />
         </Route>
       </Routes>
       {showNav && <BottomNav />}

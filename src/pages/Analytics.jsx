@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   LineChart, Line, CartesianGrid,
@@ -29,6 +29,11 @@ export default function Analytics() {
   const [topItems, setTopItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [budgets, setBudgets] = useState([]);
+  const [editingBudgets, setEditingBudgets] = useState(false);
+  const [budgetInputs, setBudgetInputs] = useState({});
+  const [allCategories, setAllCategories] = useState([]);
+
   useEffect(() => {
     loadAll();
   }, [month, year, trendSpan]);
@@ -50,8 +55,53 @@ export default function Analytics() {
       loadTrend(),
       loadTopStores(),
       loadTopItems(),
+      loadBudgets(),
     ]);
     setLoading(false);
+  }
+
+  async function loadBudgets() {
+    const { data: cats } = await supabase.from('categories').select('*').order('name');
+    if (cats) {
+      setAllCategories(cats);
+      const inputs = {};
+      cats.forEach(c => { inputs[c.id] = ''; });
+      setBudgetInputs(prev => {
+        const merged = { ...inputs };
+        Object.keys(prev).forEach(k => { if (prev[k] !== '') merged[k] = prev[k]; });
+        return merged;
+      });
+    }
+
+    const { data } = await supabase
+      .from('budgets')
+      .select('*, categories(name, color)')
+      .eq('user_id', user.id);
+
+    if (data) {
+      setBudgets(data);
+      setBudgetInputs(prev => {
+        const updated = { ...prev };
+        data.forEach(b => { updated[b.category_id] = String(b.amount); });
+        return updated;
+      });
+    }
+  }
+
+  async function handleBudgetBlur(categoryId, value) {
+    const amount = parseFloat(value) || 0;
+    await supabase.from('budgets').upsert(
+      { user_id: user.id, category_id: categoryId, amount },
+      { onConflict: 'user_id,category_id' }
+    );
+    setBudgets(prev => {
+      const existing = prev.find(b => b.category_id === categoryId);
+      if (existing) {
+        return prev.map(b => b.category_id === categoryId ? { ...b, amount } : b);
+      }
+      const cat = allCategories.find(c => c.id === categoryId);
+      return [...prev, { category_id: categoryId, amount, categories: cat ? { name: cat.name, color: cat.color } : null }];
+    });
   }
 
   async function loadCategorySpending() {
@@ -192,6 +242,19 @@ export default function Analytics() {
     setTopItems(sorted);
   }
 
+  const budgetProgressItems = budgets
+    .filter(b => parseFloat(b.amount) > 0)
+    .map(b => {
+      const catName = b.categories?.name || '';
+      const color = b.categories?.color || '#94a3b8';
+      const spent = categoryData.find(c => c.name === catName)?.total || 0;
+      const amount = parseFloat(b.amount);
+      const pct = Math.min((spent / amount) * 100, 100);
+      const over = spent > amount;
+      return { catName, color, spent, amount, pct, over };
+    })
+    .sort((a, b) => b.pct - a.pct);
+
   return (
     <div className="analytics-page page">
       <div className="month-selector">
@@ -230,6 +293,72 @@ export default function Analytics() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            )}
+          </section>
+
+          <section className="analytics-section">
+            <div className="section-header-row">
+              <h3 className="section-title">Budgets</h3>
+              <button
+                className="btn-icon btn-ghost-small"
+                onClick={() => setEditingBudgets(e => !e)}
+                title={editingBudgets ? 'Close' : 'Edit budgets'}
+              >
+                {editingBudgets ? <X size={16} /> : <Pencil size={16} />}
+              </button>
+            </div>
+
+            {editingBudgets && (
+              <div className="budget-edit-panel">
+                {allCategories.map(cat => (
+                  <div key={cat.id} className="budget-edit-row">
+                    <span className="cat-dot" style={{ background: cat.color }} />
+                    <span className="budget-edit-name">{cat.name}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="form-input budget-edit-input"
+                      value={budgetInputs[cat.id] ?? ''}
+                      onChange={e => setBudgetInputs(prev => ({ ...prev, [cat.id]: e.target.value }))}
+                      onBlur={e => handleBudgetBlur(cat.id, e.target.value)}
+                      placeholder="0"
+                    />
+                    <span className="budget-edit-currency">PLN</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!editingBudgets && budgetProgressItems.length === 0 && (
+              <p className="text-muted">No budgets set. Click the pencil to add budgets.</p>
+            )}
+
+            {!editingBudgets && budgetProgressItems.length > 0 && (
+              <div className="budget-progress-list">
+                {budgetProgressItems.map(b => (
+                  <div key={b.catName} className="budget-progress-item">
+                    <div className="budget-progress-header">
+                      <div className="budget-progress-left">
+                        <span className="cat-dot" style={{ background: b.color }} />
+                        <span className="budget-progress-name">{b.catName}</span>
+                      </div>
+                      <span className="budget-progress-values" style={{ fontFamily: 'var(--font-mono)', color: b.over ? '#ef4444' : 'var(--text-muted)' }}>
+                        {b.spent.toFixed(2)} / {b.amount.toFixed(2)} PLN
+                      </span>
+                    </div>
+                    <div className="budget-bar-track">
+                      <div
+                        className="budget-bar-fill"
+                        style={{
+                          width: `${b.pct}%`,
+                          background: b.over ? '#ef4444' : b.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
 

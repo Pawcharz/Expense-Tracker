@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import ReceiptCard from '../components/ReceiptCard';
@@ -15,17 +15,77 @@ export default function History() {
   const { user } = useAuth();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth()); // 0-indexed
+  const [month, setMonth] = useState(now.getMonth());
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
 
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceTimer = useRef(null);
+
   useEffect(() => {
-    setReceipts([]);
-    setPage(0);
-    loadReceipts(0, true);
-  }, [month, year]);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(debounceTimer.current);
+  }, [search]);
+
+  useEffect(() => {
+    if (debouncedSearch.trim().length > 0) {
+      loadSearchResults(debouncedSearch.trim());
+    } else {
+      setReceipts([]);
+      setPage(0);
+      loadReceipts(0, true);
+    }
+  }, [debouncedSearch, month, year]);
+
+  async function loadSearchResults(query) {
+    setLoading(true);
+
+    const [storeResult, itemsResult] = await Promise.all([
+      supabase
+        .from('receipts')
+        .select('*, items(count)')
+        .eq('user_id', user.id)
+        .ilike('store', `%${query}%`)
+        .order('created_at', { ascending: false })
+        .limit(50),
+      supabase
+        .from('items')
+        .select('receipt_id')
+        .ilike('name', `%${query}%`),
+    ]);
+
+    const storeReceipts = storeResult.data || [];
+    const storeIds = new Set(storeReceipts.map(r => r.id));
+
+    const itemReceiptIds = [...new Set((itemsResult.data || []).map(i => i.receipt_id))].filter(rid => !storeIds.has(rid));
+
+    let itemReceipts = [];
+    if (itemReceiptIds.length > 0) {
+      const { data } = await supabase
+        .from('receipts')
+        .select('*, items(count)')
+        .eq('user_id', user.id)
+        .in('id', itemReceiptIds)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      itemReceipts = data || [];
+    }
+
+    const combined = [...storeReceipts, ...itemReceipts].map(r => ({
+      ...r,
+      item_count: r.items?.[0]?.count ?? 0,
+    }));
+
+    setReceipts(combined);
+    setHasMore(false);
+    setLoading(false);
+  }
 
   async function loadReceipts(pageNum = 0, reset = false) {
     setLoading(true);
@@ -71,12 +131,32 @@ export default function History() {
     loadReceipts(next);
   }
 
+  const isSearching = debouncedSearch.trim().length > 0;
+
   return (
     <div className="history-page page">
-      <div className="month-selector">
-        <button className="btn-icon" onClick={prevMonth}><ChevronLeft size={20} /></button>
-        <span className="month-label">{MONTHS[month]} {year}</span>
-        <button className="btn-icon" onClick={nextMonth}><ChevronRight size={20} /></button>
+      {!isSearching && (
+        <div className="month-selector">
+          <button className="btn-icon" onClick={prevMonth}><ChevronLeft size={20} /></button>
+          <span className="month-label">{MONTHS[month]} {year}</span>
+          <button className="btn-icon" onClick={nextMonth}><ChevronRight size={20} /></button>
+        </div>
+      )}
+
+      <div className="search-bar">
+        <Search size={16} className="search-icon" />
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search stores or items…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        {search && (
+          <button className="search-clear" onClick={() => setSearch('')}>
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       {loading && receipts.length === 0 ? (
@@ -90,12 +170,15 @@ export default function History() {
         </div>
       ) : receipts.length === 0 ? (
         <div className="empty-state">
-          <p>No receipts for {MONTHS[month]} {year}</p>
+          {isSearching
+            ? <p>No results for "{debouncedSearch}"</p>
+            : <p>No receipts for {MONTHS[month]} {year}</p>
+          }
         </div>
       ) : (
         <>
           {receipts.map(r => <ReceiptCard key={r.id} receipt={r} />)}
-          {hasMore && (
+          {!isSearching && hasMore && (
             <button className="btn btn-secondary load-more" onClick={loadMore} disabled={loading}>
               {loading ? 'Loading…' : 'Load more'}
             </button>

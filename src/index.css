@@ -842,3 +842,171 @@ a {
   color: var(--bg);
   border-color: var(--text);
 }
+
+/* ── Analytics section header row ── */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-header-row .section-title {
+  margin-bottom: 0;
+}
+.btn-ghost-small {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.btn-ghost-small:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* ── Budget progress ── */
+.budget-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.budget-progress-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.budget-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.budget-progress-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.budget-progress-name {
+  font-size: 14px;
+}
+.budget-progress-values {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.budget-bar-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.budget-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.cat-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ── Budget edit panel ── */
+.budget-edit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.budget-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.budget-edit-name {
+  flex: 1;
+  font-size: 14px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.budget-edit-input {
+  width: 80px;
+  flex-shrink: 0;
+  text-align: right;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.budget-edit-currency {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Edit receipt item rows ── */
+.edit-item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.edit-item-name {
+  flex: 2;
+  min-width: 120px;
+}
+.edit-item-price {
+  flex: 0 0 80px;
+  text-align: right;
+}
+.edit-item-category {
+  flex: 1;
+  min-width: 100px;
+}
+
+/* ── Search ── */
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 10px 12px 10px 36px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.search-input:focus {
+  border-color: var(--accent);
+}
+.search-clear {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+}
