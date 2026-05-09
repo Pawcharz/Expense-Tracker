@@ -13,6 +13,8 @@ export default function Scan() {
   const galleryInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [duplicate, setDuplicate] = useState(null);   // matched existing receipt
+  const [pendingNav, setPendingNav] = useState(null);  // navigate args held until user decides
 
   async function processFile(file) {
     if (!file) return;
@@ -38,9 +40,27 @@ export default function Scan() {
 
       const parsedData = await parseReceiptImage(base64, mimeType, language);
 
-      navigate('/review', {
-        state: { parsedData, imageUrl: publicUrl, imageFile: file },
-      });
+      const navState = { parsedData, imageUrl: publicUrl, imageFile: file };
+
+      // Duplicate detection: same date + total already in DB
+      if (parsedData.date && parsedData.total != null) {
+        const { data: existing } = await supabase
+          .from('receipts')
+          .select('id, store, date, total')
+          .eq('user_id', user.id)
+          .eq('date', parsedData.date)
+          .gte('total', parsedData.total - 0.01)
+          .lte('total', parsedData.total + 0.01)
+          .limit(1);
+
+        if (existing?.length > 0) {
+          setDuplicate(existing[0]);
+          setPendingNav(navState);
+          return;
+        }
+      }
+
+      navigate('/review', { state: navState });
     } catch (err) {
       console.error(err);
       setError(err.message || t('failedToProcess'));
@@ -78,6 +98,33 @@ export default function Scan() {
 
   return (
     <div className="scan-page page">
+      {duplicate && (
+        <div className="modal-backdrop" onClick={() => setDuplicate(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <h3 className="modal-title">{t('duplicateTitle')}</h3>
+            <p className="modal-body">
+              {t('duplicateBody')
+                .replace('{store}', duplicate.store || t('unknownStore'))
+                .replace('{date}', duplicate.date)
+                .replace('{total}', parseFloat(duplicate.total).toFixed(2))}
+            </p>
+            <div className="modal-actions">
+              <button
+                className="btn btn-ghost"
+                onClick={() => navigate(`/receipt/${duplicate.id}`)}
+              >
+                {t('viewExisting')}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => { setDuplicate(null); navigate('/review', { state: pendingNav }); }}
+              >
+                {t('addAnyway')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {loading && (
         <div className="loading-overlay">
           <div className="loading-spinner" />

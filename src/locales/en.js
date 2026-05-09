@@ -26,6 +26,11 @@ export default {
   readingReceipt: 'Reading receipt…',
   tryAgain: 'Try again',
   failedToProcess: 'Failed to process receipt',
+  duplicateTitle: 'Possible duplicate',
+  duplicateBody: 'You already have a receipt from {store} on {date} for {total} PLN. Add it again?',
+  unknownStore: 'unknown store',
+  viewExisting: 'View existing',
+  addAnyway: 'Add anyway',
 
   // Review / ManualEntry
   reviewTitle: 'Review Receipt',

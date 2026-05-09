@@ -26,6 +26,11 @@ export default {
   readingReceipt: 'Czytam paragon…',
   tryAgain: 'Spróbuj ponownie',
   failedToProcess: 'Nie udało się przetworzyć paragonu',
+  duplicateTitle: 'Możliwy duplikat',
+  duplicateBody: 'Masz już paragon ze sklepu {store} z dnia {date} na kwotę {total} PLN. Dodać ponownie?',
+  unknownStore: 'nieznany sklep',
+  viewExisting: 'Pokaż istniejący',
+  addAnyway: 'Dodaj mimo to',
 
   // Review / ManualEntry
   reviewTitle: 'Sprawdź paragon',
