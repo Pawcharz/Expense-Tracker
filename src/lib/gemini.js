@@ -45,8 +45,8 @@ const RESPONSE_SCHEMA = {
           name: { type: 'string' },
           raw_name: { type: 'string' },
           price: { type: 'number' },
-          category_group: { type: 'string', enum: GROUP_NAMES },
-          category: { type: 'string', enum: CATEGORY_NAMES },
+          category_group: { type: 'string' },
+          category: { type: 'string' },
         },
         required: ['name', 'raw_name', 'price', 'category_group', 'category'],
       },
@@ -57,6 +57,8 @@ const RESPONSE_SCHEMA = {
 
 function buildSystemPrompt(language) {
   const nameLang = language === 'pl' ? 'Polish' : 'English';
+  const groups = GROUP_NAMES.join(', ');
+  const categories = CATEGORY_NAMES.join(', ');
   return `You are a receipt parser. Extract all purchased line items from the receipt image. The receipt may be in any language.
 
 Rules:
@@ -65,8 +67,8 @@ Rules:
 - raw_name: original text from the receipt exactly as printed
 - name: human-readable name in ${nameLang}
 - price: numeric value (negative for discounts)
-- category_group: the top-level category group
-- category: the specific subcategory within that group
+- category_group: pick EXACTLY one from this list: ${groups}
+- category: pick EXACTLY one from this list that fits within the chosen group: ${categories}
 - date: parse in DD.MM.YYYY format if ambiguous (European)
 - total: final amount paid after discounts`;
 }
