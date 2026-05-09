@@ -4,7 +4,7 @@ import { Camera, Image, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
-import { parseReceiptImage, imageFileToBase64 } from '../lib/gemini';
+import { parseReceiptImage, getImageChunks } from '../lib/gemini';
 
 export default function Scan() {
   const { user } = useAuth();
@@ -22,7 +22,6 @@ export default function Scan() {
     setError('');
 
     try {
-      const base64 = await imageFileToBase64(file);
       const mimeType = file.type || 'image/jpeg';
 
       const fileExt = file.name.split('.').pop() || 'jpg';
@@ -38,7 +37,8 @@ export default function Scan() {
         .from('receipts')
         .getPublicUrl(fileName);
 
-      const parsedData = await parseReceiptImage(base64, mimeType, language);
+      const chunks = await getImageChunks(file);
+      const parsedData = await parseReceiptImage(chunks, language);
 
       const navState = { parsedData, imageUrl: publicUrl, imageFile: file };
 
