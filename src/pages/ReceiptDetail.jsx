@@ -9,11 +9,17 @@ import { fetchCategoryData } from '../lib/categories';
 
 function formatReceiptDate(val) {
   if (!val) return '';
-  const d = new Date(val);
+  const str = String(val);
+  // Date-only string (10 chars): new Date('YYYY-MM-DD') parses as UTC midnight
+  // which shows as 02:00 in UTC+2 — force local interpretation by appending T00:00
+  if (str.length === 10) {
+    const d = new Date(str + 'T00:00');
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+  const d = new Date(str);
   const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  const h = d.getHours(), m = d.getMinutes();
-  if (h === 0 && m === 0) return date;
-  return `${date}, ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  if (d.getHours() === 0 && d.getMinutes() === 0) return date;
+  return `${date}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 function toDatetimeLocal(val) {

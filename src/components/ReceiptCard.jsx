@@ -2,11 +2,15 @@ import { useNavigate } from 'react-router-dom';
 
 function formatReceiptDate(val) {
   if (!val) return '';
-  const d = new Date(val);
+  const str = String(val);
+  if (str.length === 10) {
+    const d = new Date(str + 'T00:00');
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+  const d = new Date(str);
   const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  const h = d.getHours(), m = d.getMinutes();
-  if (h === 0 && m === 0) return date;
-  return `${date}, ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  if (d.getHours() === 0 && d.getMinutes() === 0) return date;
+  return `${date}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export default function ReceiptCard({ receipt }) {
