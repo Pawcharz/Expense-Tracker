@@ -68,11 +68,13 @@ export default {
   topStores: 'Topowe sklepy',
   topItems: 'Topowe pozycje',
   budgetsTitle: 'Budżety',
+  budgetsMonthly: 'Miesięczne limity',
   editBudgets: 'Edytuj budżety',
   doneBudgets: 'Gotowe',
   noDataMonth: 'Brak danych za ten miesiąc.',
   noDataPeriod: 'Brak danych za ten okres.',
   budgetLabel: 'Budżet',
+  totalSpent: 'Łącznie wydane',
   monthNames: ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'],
   monthNamesShort: ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'],
 

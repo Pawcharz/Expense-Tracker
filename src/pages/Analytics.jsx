@@ -331,7 +331,10 @@ export default function Analytics() {
 
           <section className="analytics-section">
             <div className="section-header-row">
-              <h3 className="section-title">{t('budgetsTitle')}</h3>
+              <div>
+                <h3 className="section-title">{t('budgetsTitle')}</h3>
+                <span className="section-subtitle">{t('budgetsMonthly')}</span>
+              </div>
               <button
                 className="btn-icon btn-ghost-small"
                 onClick={() => setEditingBudgets(e => !e)}
@@ -399,6 +402,14 @@ export default function Analytics() {
                     </div>
                   </div>
                 ))}
+                <div className="budget-totals-row">
+                  <span>{t('totalSpent')}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)' }}>
+                    {budgetProgressItems.reduce((s, b) => s + b.spent, 0).toFixed(2)}
+                    {' / '}
+                    {budgetProgressItems.reduce((s, b) => s + b.amount, 0).toFixed(2)} PLN
+                  </span>
+                </div>
               </div>
             )}
           </section>
