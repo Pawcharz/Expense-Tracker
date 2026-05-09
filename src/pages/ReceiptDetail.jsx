@@ -7,10 +7,19 @@ import { useLanguage } from '../hooks/useLanguage';
 import CategoryBadge from '../components/CategoryBadge';
 import { fetchCategoryData } from '../lib/categories';
 
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+function formatReceiptDate(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const h = d.getHours(), m = d.getMinutes();
+  if (h === 0 && m === 0) return date;
+  return `${date}, ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function toDatetimeLocal(val) {
+  if (!val) return new Date().toISOString().slice(0, 16);
+  if (val.length === 10) return val + 'T00:00';
+  return val.slice(0, 16);
 }
 
 
@@ -68,7 +77,7 @@ export default function ReceiptDetail() {
 
   function startEditing() {
     setEditStore(receipt.store || '');
-    setEditDate(receipt.date || '');
+    setEditDate(toDatetimeLocal(receipt.date));
     setEditItems(items.map((item, i) => ({
       _id: i,
       name: item.name,
@@ -224,7 +233,7 @@ export default function ReceiptDetail() {
       <div className="detail-meta">
         {editing ? (
           <input
-            type="date"
+            type="datetime-local"
             className="form-input"
             value={editDate}
             onChange={e => setEditDate(e.target.value)}
@@ -232,7 +241,7 @@ export default function ReceiptDetail() {
           />
         ) : (
           <span className="text-muted">
-            {formatDate(receipt.date)}
+            {formatReceiptDate(receipt.date)}
           </span>
         )}
         <span className="detail-total" style={{ fontFamily: 'var(--font-mono)' }}>

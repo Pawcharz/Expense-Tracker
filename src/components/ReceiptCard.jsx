@@ -1,9 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+function formatReceiptDate(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const h = d.getHours(), m = d.getMinutes();
+  if (h === 0 && m === 0) return date;
+  return `${date}, ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 export default function ReceiptCard({ receipt }) {
@@ -18,7 +21,7 @@ export default function ReceiptCard({ receipt }) {
         </span>
       </div>
       <div className="receipt-card-footer">
-        <span className="receipt-date">{formatDate(receipt.date)}</span>
+        <span className="receipt-date">{formatReceiptDate(receipt.date)}</span>
         {receipt.item_count != null && (
           <span className="receipt-items">{receipt.item_count} item{receipt.item_count !== 1 ? 's' : ''}</span>
         )}

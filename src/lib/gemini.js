@@ -70,7 +70,7 @@ Rules:
 - price: numeric value (negative for discounts)
 - category_group: pick EXACTLY one from this list: ${groups}
 - category: pick EXACTLY one from this list that fits within the chosen group: ${categories}
-- date: always output in YYYY-MM-DD format. If the receipt shows DD.MM.YYYY or DD/MM/YYYY, convert accordingly. If the format is already YYYY-MM-DD (year first), copy it exactly without swapping day and month.
+- date: output as YYYY-MM-DDTHH:MM (ISO datetime, 24h). If a time is visible on the receipt, include it. If no time is visible, use YYYY-MM-DDT00:00. Always output YYYY-MM-DD with year first — never swap day and month when year leads.
 - total: final amount paid after discounts
 
 DELIVERY APP RULE (important):
@@ -100,7 +100,12 @@ async function geminiCall(apiKey, parts, generationConfig) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts }],
-      generationConfig,
+      generationConfig: {
+        ...generationConfig,
+        // Disable thinking mode — receipt OCR is a structured extraction task,
+        // not a reasoning task; disabling cuts response time from ~15s to ~3-5s
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     }),
   });
 
@@ -198,6 +203,7 @@ export async function parseReceiptImage(chunks, language = 'en') {
 
 export async function getImageChunks(file) {
   const mimeType = file.type || 'image/jpeg';
+  const MAX_WIDTH = 1920;
 
   const img = await new Promise((resolve, reject) => {
     const el = new Image();
@@ -207,22 +213,38 @@ export async function getImageChunks(file) {
     el.src = url;
   });
 
-  if (img.height <= img.width * 2.0) {
-    return [{ base64: await imageFileToBase64(file), mimeType }];
+  // Scale down if wider than MAX_WIDTH (reduces token count without hurting OCR quality)
+  const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+  const drawW = Math.round(img.width * scale);
+  const drawH = Math.round(img.height * scale);
+
+  if (drawH <= drawW * 2.0) {
+    // Single chunk — resize and encode
+    const canvas = document.createElement('canvas');
+    canvas.width = drawW;
+    canvas.height = drawH;
+    canvas.getContext('2d').drawImage(img, 0, 0, drawW, drawH);
+    const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+    return [{ base64, mimeType: 'image/jpeg' }];
   }
 
-  const chunkHeight = img.width * 2;
+  // Multi-chunk: split the scaled image
+  const chunkHeight = drawW * 2;
   const overlap = Math.round(chunkHeight * 0.12);
   const chunks = [];
   let y = 0;
 
-  while (y < img.height && chunks.length < 6) {
-    const sectionHeight = Math.min(chunkHeight, img.height - y);
+  while (y < drawH && chunks.length < 6) {
+    const sectionHeight = Math.min(chunkHeight, drawH - y);
     const canvas = document.createElement('canvas');
-    canvas.width = img.width;
+    canvas.width = drawW;
     canvas.height = sectionHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, y, img.width, sectionHeight, 0, 0, img.width, sectionHeight);
+    // Draw the scaled source slice onto the chunk canvas
+    canvas.getContext('2d').drawImage(
+      img,
+      0, Math.round(y / scale), img.width, Math.round(sectionHeight / scale),
+      0, 0, drawW, sectionHeight
+    );
     const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
     chunks.push({ base64, mimeType: 'image/jpeg' });
     y += chunkHeight - overlap;

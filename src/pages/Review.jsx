@@ -6,6 +6,12 @@ import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
 import { fetchCategoryData } from '../lib/categories';
 
+function toDatetimeLocal(val) {
+  if (!val) return new Date().toISOString().slice(0, 16);
+  if (val.length === 10) return val + 'T00:00';
+  return val.slice(0, 16);
+}
+
 export default function Review() {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -15,7 +21,7 @@ export default function Review() {
   const state = location.state;
 
   const [store, setStore] = useState(state?.parsedData?.store || '');
-  const [date, setDate] = useState(state?.parsedData?.date || new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toDatetimeLocal(state?.parsedData?.date));
   const [items, setItems] = useState(
     (state?.parsedData?.items || []).map((item, i) => ({
       ...item,
@@ -147,7 +153,7 @@ export default function Review() {
       <div className="form-group">
         <label className="form-label">{t('dateLabel')}</label>
         <input
-          type="date"
+          type="datetime-local"
           className="form-input"
           value={date}
           onChange={e => setDate(e.target.value)}

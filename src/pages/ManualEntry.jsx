@@ -12,7 +12,7 @@ export default function ManualEntry() {
   const navigate = useNavigate();
 
   const [store, setStore] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
   const [items, setItems] = useState([{ _id: 0, name: '', price: '', category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
   const [groups, setGroups] = useState([]);
   const [categoriesByGroup, setCategoriesByGroup] = useState({});
@@ -103,7 +103,7 @@ export default function ManualEntry() {
         <div className="form-group">
           <label className="form-label">{t('dateLabel')}</label>
           <input
-            type="date"
+            type="datetime-local"
             className="form-input"
             value={date}
             onChange={e => setDate(e.target.value)}

@@ -23,21 +23,18 @@ export default function Scan() {
 
     try {
       const mimeType = file.type || 'image/jpeg';
-
       const fileExt = file.name.split('.').pop() || 'jpg';
       const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(fileName, file, { contentType: mimeType });
+      // Upload to storage and prepare Gemini chunks simultaneously
+      const [uploadResult, chunks] = await Promise.all([
+        supabase.storage.from('receipts').upload(fileName, file, { contentType: mimeType }),
+        getImageChunks(file),
+      ]);
 
-      if (uploadError) throw uploadError;
+      if (uploadResult.error) throw uploadResult.error;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('receipts')
-        .getPublicUrl(fileName);
-
-      const chunks = await getImageChunks(file);
+      const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(fileName);
       const parsedData = await parseReceiptImage(chunks, language);
 
       const navState = { parsedData, imageUrl: publicUrl, imageFile: file };
