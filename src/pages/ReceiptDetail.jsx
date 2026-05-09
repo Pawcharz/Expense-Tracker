@@ -11,6 +11,11 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function formatTime(isoStr) {
+  if (!isoStr) return null;
+  return new Date(isoStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function ReceiptDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -91,7 +96,12 @@ export default function ReceiptDetail() {
       )}
 
       <div className="detail-meta">
-        <span className="text-muted">{formatDate(receipt.date)}</span>
+        <span className="text-muted">
+          {formatDate(receipt.date)}
+          {formatTime(receipt.created_at) && (
+            <span className="detail-time"> · {formatTime(receipt.created_at)}</span>
+          )}
+        </span>
         <span className="detail-total" style={{ fontFamily: 'var(--font-mono)' }}>
           {receipt.total != null ? `${Number(receipt.total).toFixed(2)} PLN` : '—'}
         </span>

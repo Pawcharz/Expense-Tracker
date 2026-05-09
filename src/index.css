@@ -821,3 +821,24 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* ── Trend span selector ── */
+.trend-span-selector {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.trend-span-btn {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.trend-span-btn.active {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}

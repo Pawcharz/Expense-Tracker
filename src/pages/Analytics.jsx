@@ -22,6 +22,7 @@ export default function Analytics() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
 
+  const [trendSpan, setTrendSpan] = useState(6);
   const [categoryData, setCategoryData] = useState([]);
   const [trendData, setTrendData] = useState([]);
   const [topStores, setTopStores] = useState([]);
@@ -30,7 +31,7 @@ export default function Analytics() {
 
   useEffect(() => {
     loadAll();
-  }, [month, year]);
+  }, [month, year, trendSpan]);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1); }
@@ -94,7 +95,7 @@ export default function Analytics() {
 
   async function loadTrend() {
     const months = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = trendSpan - 1; i >= 0; i--) {
       let m = month - i;
       let y = year;
       while (m < 0) { m += 12; y--; }
@@ -233,7 +234,18 @@ export default function Analytics() {
           </section>
 
           <section className="analytics-section">
-            <h3 className="section-title">Monthly Trend (6 months)</h3>
+            <h3 className="section-title">Monthly Trend</h3>
+            <div className="trend-span-selector">
+              {[6, 12, 24].map(n => (
+                <button
+                  key={n}
+                  className={`trend-span-btn${trendSpan === n ? ' active' : ''}`}
+                  onClick={() => setTrendSpan(n)}
+                >
+                  {n}mo
+                </button>
+              ))}
+            </div>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={trendData} margin={{ left: 8, right: 16 }}>
                 <CartesianGrid stroke="#222" strokeDasharray="3 3" />
