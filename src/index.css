@@ -97,9 +97,11 @@ main, .page {
   text-decoration: none;
 }
 
-.btn:disabled {
+.btn:disabled,
+.btn.btn-disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
 .btn-primary {
@@ -371,9 +373,11 @@ main, .page {
   transform: scale(0.97);
 }
 
-.btn-camera:disabled {
+.btn-camera:disabled,
+.btn-camera.btn-disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* ── Loading overlay ── */

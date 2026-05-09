@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Image, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -10,8 +10,6 @@ export default function Scan() {
   const { user } = useAuth();
   const { language, t } = useLanguage();
   const navigate = useNavigate();
-  const cameraInputRef = useRef(null);
-  const galleryInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -69,41 +67,36 @@ export default function Scan() {
         <h2 className="scan-title">{t('scanTitle')}</h2>
         <p className="scan-subtitle text-muted">{t('scanSubtitle')}</p>
 
-        <button
-          className="btn-camera"
-          onClick={() => cameraInputRef.current?.click()}
-          disabled={loading}
+        <label
+          className={`btn-camera${loading ? ' btn-disabled' : ''}`}
+          style={{ cursor: loading ? 'not-allowed' : 'pointer' }}
         >
           <Camera size={40} />
           <span>{t('takePhoto')}</span>
-        </button>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            disabled={loading}
+            onChange={handleFileChange}
+          />
+        </label>
 
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
-
-        <button
-          className="btn btn-secondary"
-          style={{ marginTop: '16px' }}
-          onClick={() => galleryInputRef.current?.click()}
-          disabled={loading}
+        <label
+          className={`btn btn-secondary${loading ? ' btn-disabled' : ''}`}
+          style={{ marginTop: '16px', cursor: loading ? 'not-allowed' : 'pointer' }}
         >
           <Image size={18} />
           <span>{t('chooseGallery')}</span>
-        </button>
-
-        <input
-          ref={galleryInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            disabled={loading}
+            onChange={handleFileChange}
+          />
+        </label>
 
         <button
           className="btn btn-ghost"
