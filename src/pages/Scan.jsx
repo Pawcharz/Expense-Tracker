@@ -77,8 +77,7 @@ export default function Scan() {
             type="file"
             accept="image/*"
             capture="environment"
-            style={{ display: 'none' }}
-            disabled={loading}
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
             onChange={handleFileChange}
           />
         </label>
@@ -92,8 +91,7 @@ export default function Scan() {
           <input
             type="file"
             accept="image/*"
-            style={{ display: 'none' }}
-            disabled={loading}
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
             onChange={handleFileChange}
           />
         </label>
@@ -110,6 +108,9 @@ export default function Scan() {
         {error && (
           <div className="error-box">
             <p>{error}</p>
+            <p className="text-muted" style={{ fontSize: '12px', marginTop: '6px' }}>
+              If no file picker appeared, open Android Settings → Apps → Chrome → Permissions and allow Photos/Files access.
+            </p>
             <button
               className="btn btn-ghost"
               onClick={() => setError('')}
