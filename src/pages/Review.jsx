@@ -190,7 +190,7 @@ export default function Review() {
                 onChange={e => handleGroupChange(item._id, e.target.value)}
               >
                 {groups.map(g => (
-                  <option key={g.name} value={g.name}>{g.name}</option>
+                  <option key={g.name} value={g.name}>{t('categoryGroups')[g.name] || g.name}</option>
                 ))}
               </select>
               <select
@@ -199,7 +199,7 @@ export default function Review() {
                 onChange={e => updateItem(item._id, 'category', e.target.value)}
               >
                 {(categoriesByGroup[item.category_group] || []).map(c => (
-                  <option key={c.name} value={c.name}>{c.name}</option>
+                  <option key={c.name} value={c.name}>{t('categoryNames')[c.name] || c.name}</option>
                 ))}
               </select>
             </div>

@@ -230,7 +230,7 @@ export default function Analytics() {
       filtered.forEach(item => {
         const catName = item.categories?.name || 'Uncategorized';
         const color = item.categories?.category_groups?.color || '#71717a';
-        if (!map[catName]) map[catName] = { name: catName, color, total: 0 };
+        if (!map[catName]) map[catName] = { name: catName, displayName: t('categoryNames')[catName] || catName, color, total: 0 };
         map[catName].total += parseFloat(item.price) || 0;
       });
       return Object.values(map)
@@ -242,7 +242,7 @@ export default function Analytics() {
       rawItems.forEach(item => {
         const groupName = item.categories?.category_groups?.name || 'Other';
         const color = item.categories?.category_groups?.color || '#71717a';
-        if (!map[groupName]) map[groupName] = { name: groupName, color, total: 0 };
+        if (!map[groupName]) map[groupName] = { name: groupName, displayName: t('categoryGroups')[groupName] || groupName, color, total: 0 };
         map[groupName].total += parseFloat(item.price) || 0;
       });
       return Object.values(map)
@@ -261,7 +261,8 @@ export default function Analytics() {
       const amount = parseFloat(b.amount);
       const pct = Math.min((spent / amount) * 100, 100);
       const over = spent > amount;
-      return { groupName, color, spent, amount, pct, over };
+      const displayGroupName = t('categoryGroups')[groupName] || groupName;
+      return { groupName, displayGroupName, color, spent, amount, pct, over };
     })
     .sort((a, b) => b.pct - a.pct);
 
@@ -291,7 +292,7 @@ export default function Analytics() {
                 style={{ marginBottom: 8, fontSize: 13 }}
                 onClick={() => setExpandedGroup(null)}
               >
-                ← {expandedGroup}
+                ← {t('categoryGroups')[expandedGroup] || expandedGroup}
               </button>
             )}
             {categoryData.length === 0 ? (
@@ -310,7 +311,7 @@ export default function Analytics() {
                   style={{ cursor: expandedGroup ? 'default' : 'pointer' }}
                 >
                   <XAxis type="number" tick={{ fill: '#666', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="name" width={110} tick={{ fill: '#f0f0f0', fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="displayName" width={110} tick={{ fill: '#f0f0f0', fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip
                     formatter={v => [`${v.toFixed(2)} PLN`]}
                     contentStyle={{ background: '#141414', border: '1px solid #222', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
@@ -344,7 +345,7 @@ export default function Analytics() {
                 {allGroups.map(grp => (
                   <div key={grp.id} className="budget-edit-row">
                     <span className="cat-dot" style={{ background: grp.color }} />
-                    <span className="budget-edit-name">{grp.name}</span>
+                    <span className="budget-edit-name">{t('categoryGroups')[grp.name] || grp.name}</span>
                     <input
                       type="number"
                       min="0"
@@ -372,7 +373,7 @@ export default function Analytics() {
                     <div className="budget-progress-header">
                       <div className="budget-progress-left">
                         <span className="cat-dot" style={{ background: b.color }} />
-                        <span className="budget-progress-name">{b.groupName}</span>
+                        <span className="budget-progress-name">{b.displayGroupName}</span>
                       </div>
                       <span className="budget-progress-values" style={{ fontFamily: 'var(--font-mono)', color: b.over ? '#ef4444' : 'var(--text-muted)' }}>
                         {b.spent.toFixed(2)} / {b.amount.toFixed(2)} PLN
