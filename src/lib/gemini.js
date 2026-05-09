@@ -69,7 +69,7 @@ Rules:
 - price: numeric value (negative for discounts)
 - category_group: pick EXACTLY one from this list: ${groups}
 - category: pick EXACTLY one from this list that fits within the chosen group: ${categories}
-- date: parse in DD.MM.YYYY format if ambiguous (European)
+- date: always output in YYYY-MM-DD format. If the receipt shows DD.MM.YYYY or DD/MM/YYYY, convert accordingly. If the format is already YYYY-MM-DD (year first), copy it exactly without swapping day and month.
 - total: final amount paid after discounts`;
 }
 
