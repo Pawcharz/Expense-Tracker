@@ -513,11 +513,23 @@ main, .page {
 }
 
 .item-row {
-  display: grid;
-  grid-template-columns: 1fr 80px 130px 36px;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.item-row-top {
+  display: grid;
+  grid-template-columns: 1fr 80px 36px;
+  gap: 6px;
   align-items: center;
+}
+.item-row-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
 .item-price {

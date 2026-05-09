@@ -1,39 +1,74 @@
 const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
+const GROUP_NAMES = [
+  'Groceries','Drinks','Dining & Takeout','Household','Hygiene & Beauty',
+  'Health & Medical','Clothing','Transport','Digital & Subscriptions',
+  'Electronics','Housing','Education','Entertainment','Travel',
+  'Finance & Fees','Pets','Gifts & Donations','Other',
+];
+
+const CATEGORY_NAMES = [
+  'Meat & Fish','Dairy & Eggs','Cheese','Bread & Bakery','Vegetables','Fruit',
+  'Frozen Food','Pantry & Dry Goods','Condiments & Spices','Snacks & Sweets','Baby Food',
+  'Water & Soft Drinks','Juice','Coffee & Tea','Alcohol','Energy Drinks',
+  'Restaurant','Fast Food','Café','Delivery','Bar',
+  'Cleaning Products','Kitchen Supplies','Furniture','Home Decor','Garden & Plants',
+  'Tools & Hardware','Storage',
+  'Personal Care','Cosmetics & Skincare','Haircare','Pharmacy & Supplements',
+  'Doctor / Clinic','Dentist','Pharmacy','Lab & Tests','Gym & Fitness','Sport Equipment',
+  'Everyday Clothing','Shoes','Outerwear','Accessories','Formal Wear','Sportswear','Underwear & Socks',
+  'Fuel','Public Transport','Taxi / Rideshare','Car Maintenance','Parking','Tolls','Flights',
+  'Productivity Tools','Entertainment Streaming','Games','Cloud Storage','Software Licenses','Domain & Hosting',
+  'Phones & Tablets','Computers & Accessories','TV & Audio','Smart Home','Cables & Peripherals',
+  'Rent','Building Charges','Utilities','Internet & Phone Plan','Insurance',
+  'Books & Textbooks','Courses & Workshops','School Supplies','Tuition',
+  'Cinema & Theatre','Events & Concerts','Books & Magazines','Hobbies','Toys & Games',
+  'Accommodation','Activities & Tours','Travel Insurance','Luggage',
+  'Bank Fees','Transaction Fees','Taxes','Fines','Loan Payments',
+  'Pet Food','Vet','Pet Grooming','Pet Supplies',
+  'Gifts','Charity','Flowers',
+  'Uncategorized',
+];
+
+const RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    store: { type: 'string', nullable: true },
+    date: { type: 'string', nullable: true },
+    total: { type: 'number', nullable: true },
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          raw_name: { type: 'string' },
+          price: { type: 'number' },
+          category_group: { type: 'string', enum: GROUP_NAMES },
+          category: { type: 'string', enum: CATEGORY_NAMES },
+        },
+        required: ['name', 'raw_name', 'price', 'category_group', 'category'],
+      },
+    },
+  },
+  required: ['items'],
+};
+
 function buildSystemPrompt(language) {
   const nameLang = language === 'pl' ? 'Polish' : 'English';
-  return `You are a receipt parser. Extract all purchased line items from the receipt image.
-The receipt may be in Polish or any other language.
-
-Respond ONLY with a valid JSON object — no markdown, no explanation, no backticks.
-Use this exact structure:
-{
-  "store": "store name or null",
-  "date": "YYYY-MM-DD or null",
-  "total": numeric or null,
-  "items": [
-    {
-      "name": "human-readable name in ${nameLang}",
-      "raw_name": "original text from receipt",
-      "price": numeric,
-      "category": "one of the allowed categories"
-    }
-  ]
-}
-
-Allowed categories (use exactly these strings):
-Meat, Dairy, Vegetables, Fruit, Bread & Bakery, Drinks, Snacks, Household, Hygiene, Subscriptions, Dining, Other
+  return `You are a receipt parser. Extract all purchased line items from the receipt image. The receipt may be in any language.
 
 Rules:
-- Every item on the receipt must appear in the output, including discounts (negative price)
-- If an item is a discount or coupon, name it clearly and give it a negative price
-- Do not invent items that are not on the receipt
-- raw_name preserves the original receipt text
-- name must be written in ${nameLang}
-- If you cannot determine the price of an item, omit that item
-- If the date is ambiguous, prefer DD.MM.YYYY parsing (European format)
-- total should be the final amount paid, not subtotal before discounts`;
+- Every item on the receipt must appear, including discounts (give discounts a negative price and name them clearly)
+- Do not invent items not on the receipt
+- raw_name: original text from the receipt exactly as printed
+- name: human-readable name in ${nameLang}
+- price: numeric value (negative for discounts)
+- category_group: the top-level category group
+- category: the specific subcategory within that group
+- date: parse in DD.MM.YYYY format if ambiguous (European)
+- total: final amount paid after discounts`;
 }
 
 export async function parseReceiptImage(base64Image, mimeType = 'image/jpeg', language = 'en') {
@@ -47,33 +82,29 @@ export async function parseReceiptImage(base64Image, mimeType = 'image/jpeg', la
         {
           parts: [
             { text: buildSystemPrompt(language) },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: base64Image,
-              },
-            },
+            { inline_data: { mime_type: mimeType, data: base64Image } },
           ],
         },
       ],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096,
+        responseMimeType: 'application/json',
+        responseSchema: RESPONSE_SCHEMA,
       },
     }),
   });
 
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error?.message || 'Gemini API error');
+    let msg = 'Gemini API error';
+    try { const err = await response.json(); msg = err.error?.message || msg; } catch {}
+    throw new Error(msg);
   }
 
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error('Empty response from Gemini');
-
-  const clean = text.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean);
+  return JSON.parse(text);
 }
 
 export function imageFileToBase64(file) {

@@ -4,18 +4,7 @@ import { Trash2, Plus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
-
-const CATEGORY_NAMES = [
-  'Meat', 'Dairy', 'Vegetables', 'Fruit', 'Bread & Bakery',
-  'Drinks', 'Snacks', 'Household', 'Hygiene', 'Subscriptions', 'Dining', 'Other',
-];
-
-const CATEGORY_KEYS = {
-  'Meat': 'categoryMeat', 'Dairy': 'categoryDairy', 'Vegetables': 'categoryVegetables',
-  'Fruit': 'categoryFruit', 'Bread & Bakery': 'categoryBread', 'Drinks': 'categoryDrinks',
-  'Snacks': 'categorySnacks', 'Household': 'categoryHousehold', 'Hygiene': 'categoryHygiene',
-  'Subscriptions': 'categorySubscriptions', 'Dining': 'categoryDining', 'Other': 'categoryOther',
-};
+import { fetchCategoryData } from '../lib/categories';
 
 export default function ManualEntry() {
   const { user } = useAuth();
@@ -24,14 +13,18 @@ export default function ManualEntry() {
 
   const [store, setStore] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [items, setItems] = useState([{ _id: 0, name: '', price: '', category: 'Other', raw_name: '' }]);
-  const [categories, setCategories] = useState([]);
+  const [items, setItems] = useState([{ _id: 0, name: '', price: '', category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
+  const [groups, setGroups] = useState([]);
+  const [categoriesByGroup, setCategoriesByGroup] = useState({});
+  const [categoryMap, setCategoryMap] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    supabase.from('categories').select('*').then(({ data }) => {
-      if (data) setCategories(data);
+    fetchCategoryData().then(({ groups: g, categoriesByGroup: cbg, categoryMap: cm }) => {
+      setGroups(g);
+      setCategoriesByGroup(cbg);
+      setCategoryMap(cm);
     });
   }, []);
 
@@ -46,7 +39,14 @@ export default function ManualEntry() {
   }
 
   function addItem() {
-    setItems(prev => [...prev, { _id: Date.now(), name: '', price: '', category: 'Other', raw_name: '' }]);
+    setItems(prev => [...prev, { _id: Date.now(), name: '', price: '', category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
+  }
+
+  function handleGroupChange(id, newGroup) {
+    const firstCat = categoriesByGroup[newGroup]?.[0]?.name || 'Uncategorized';
+    setItems(prev => prev.map(item =>
+      item._id === id ? { ...item, category_group: newGroup, category: firstCat } : item
+    ));
   }
 
   async function handleSave() {
@@ -60,9 +60,6 @@ export default function ManualEntry() {
         .single();
       if (receiptError) throw receiptError;
 
-      const categoryMap = {};
-      categories.forEach(c => { categoryMap[c.name] = c.id; });
-
       const itemsToInsert = items
         .filter(item => item.name && item.price !== '')
         .map(item => ({
@@ -70,7 +67,7 @@ export default function ManualEntry() {
           name: item.name,
           raw_name: item.raw_name || null,
           price: parseFloat(item.price) || 0,
-          category_id: categoryMap[item.category] || null,
+          category_id: categoryMap[item.category]?.id || null,
         }));
 
       if (itemsToInsert.length > 0) {
@@ -118,36 +115,49 @@ export default function ManualEntry() {
           <div className="items-editor">
             {items.map(item => (
               <div key={item._id} className="item-row">
-                <input
-                  className="form-input item-name"
-                  value={item.name}
-                  onChange={e => updateItem(item._id, 'name', e.target.value)}
-                  placeholder={t('itemNamePlaceholder')}
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-input item-price"
-                  value={item.price}
-                  onChange={e => updateItem(item._id, 'price', e.target.value)}
-                  placeholder="0.00"
-                />
-                <select
-                  className="form-select item-category"
-                  value={item.category}
-                  onChange={e => updateItem(item._id, 'category', e.target.value)}
-                >
-                  {CATEGORY_NAMES.map(c => (
-                    <option key={c} value={c}>{t(CATEGORY_KEYS[c])}</option>
-                  ))}
-                </select>
-                <button
-                  className="btn-icon btn-danger"
-                  onClick={() => deleteItem(item._id)}
-                  type="button"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="item-row-top">
+                  <input
+                    className="form-input item-name"
+                    value={item.name}
+                    onChange={e => updateItem(item._id, 'name', e.target.value)}
+                    placeholder={t('itemNamePlaceholder')}
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-input item-price"
+                    value={item.price}
+                    onChange={e => updateItem(item._id, 'price', e.target.value)}
+                    placeholder="0.00"
+                  />
+                  <button
+                    className="btn-icon btn-danger"
+                    onClick={() => deleteItem(item._id)}
+                    type="button"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div className="item-row-bottom">
+                  <select
+                    className="form-select"
+                    value={item.category_group}
+                    onChange={e => handleGroupChange(item._id, e.target.value)}
+                  >
+                    {groups.map(g => (
+                      <option key={g.name} value={g.name}>{g.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="form-select"
+                    value={item.category}
+                    onChange={e => updateItem(item._id, 'category', e.target.value)}
+                  >
+                    {(categoriesByGroup[item.category_group] || []).map(c => (
+                      <option key={c.name} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ))}
             <button className="btn btn-ghost add-item-btn" onClick={addItem} type="button">

@@ -16,7 +16,8 @@ export default function Analytics() {
   const [month, setMonth] = useState(now.getMonth());
 
   const [trendSpan, setTrendSpan] = useState(6);
-  const [categoryData, setCategoryData] = useState([]);
+  const [rawItems, setRawItems] = useState([]);
+  const [expandedGroup, setExpandedGroup] = useState(null);
   const [trendData, setTrendData] = useState([]);
   const [topStores, setTopStores] = useState([]);
   const [topItems, setTopItems] = useState([]);
@@ -25,7 +26,7 @@ export default function Analytics() {
   const [budgets, setBudgets] = useState([]);
   const [editingBudgets, setEditingBudgets] = useState(false);
   const [budgetInputs, setBudgetInputs] = useState({});
-  const [allCategories, setAllCategories] = useState([]);
+  const [allGroups, setAllGroups] = useState([]);
 
   useEffect(() => {
     loadAll();
@@ -54,11 +55,11 @@ export default function Analytics() {
   }
 
   async function loadBudgets() {
-    const { data: cats } = await supabase.from('categories').select('*').order('name');
-    if (cats) {
-      setAllCategories(cats);
+    const { data: groups } = await supabase.from('category_groups').select('*').order('name');
+    if (groups) {
+      setAllGroups(groups);
       const inputs = {};
-      cats.forEach(c => { inputs[c.id] = ''; });
+      groups.forEach(g => { inputs[g.id] = ''; });
       setBudgetInputs(prev => {
         const merged = { ...inputs };
         Object.keys(prev).forEach(k => { if (prev[k] !== '') merged[k] = prev[k]; });
@@ -68,32 +69,32 @@ export default function Analytics() {
 
     const { data } = await supabase
       .from('budgets')
-      .select('*, categories(name, color)')
+      .select('*, category_groups(name, color)')
       .eq('user_id', user.id);
 
     if (data) {
       setBudgets(data);
       setBudgetInputs(prev => {
         const updated = { ...prev };
-        data.forEach(b => { updated[b.category_id] = String(b.amount); });
+        data.forEach(b => { updated[b.group_id] = String(b.amount); });
         return updated;
       });
     }
   }
 
-  async function handleBudgetBlur(categoryId, value) {
+  async function handleBudgetBlur(groupId, value) {
     const amount = parseFloat(value) || 0;
     await supabase.from('budgets').upsert(
-      { user_id: user.id, category_id: categoryId, amount },
-      { onConflict: 'user_id,category_id' }
+      { user_id: user.id, group_id: groupId, amount },
+      { onConflict: 'user_id,group_id' }
     );
     setBudgets(prev => {
-      const existing = prev.find(b => b.category_id === categoryId);
+      const existing = prev.find(b => b.group_id === groupId);
       if (existing) {
-        return prev.map(b => b.category_id === categoryId ? { ...b, amount } : b);
+        return prev.map(b => b.group_id === groupId ? { ...b, amount } : b);
       }
-      const cat = allCategories.find(c => c.id === categoryId);
-      return [...prev, { category_id: categoryId, amount, categories: cat ? { name: cat.name, color: cat.color } : null }];
+      const grp = allGroups.find(g => g.id === groupId);
+      return [...prev, { group_id: groupId, amount, category_groups: grp ? { name: grp.name, color: grp.color } : null }];
     });
   }
 
@@ -110,30 +111,16 @@ export default function Analytics() {
       .gte('date', from)
       .lt('date', to);
 
-    if (!receipts?.length) { setCategoryData([]); return; }
+    if (!receipts?.length) { setRawItems([]); return; }
     const ids = receipts.map(r => r.id);
 
     const { data: items } = await supabase
       .from('items')
-      .select('price, categories(name, color)')
+      .select('price, categories(name, category_groups(name, color))')
       .in('receipt_id', ids)
       .gt('price', 0);
 
-    if (!items) { setCategoryData([]); return; }
-
-    const map = {};
-    items.forEach(item => {
-      const catName = item.categories?.name || 'Other';
-      const color = item.categories?.color || '#94a3b8';
-      if (!map[catName]) map[catName] = { name: catName, color, total: 0 };
-      map[catName].total += parseFloat(item.price) || 0;
-    });
-
-    const sorted = Object.values(map)
-      .map(c => ({ ...c, total: parseFloat(c.total.toFixed(2)) }))
-      .sort((a, b) => b.total - a.total);
-
-    setCategoryData(sorted);
+    setRawItems(items || []);
   }
 
   async function loadTrend() {
@@ -236,16 +223,45 @@ export default function Analytics() {
     setTopItems(sorted);
   }
 
+  const categoryData = (() => {
+    if (expandedGroup) {
+      const filtered = rawItems.filter(i => i.categories?.category_groups?.name === expandedGroup);
+      const map = {};
+      filtered.forEach(item => {
+        const catName = item.categories?.name || 'Uncategorized';
+        const color = item.categories?.category_groups?.color || '#71717a';
+        if (!map[catName]) map[catName] = { name: catName, color, total: 0 };
+        map[catName].total += parseFloat(item.price) || 0;
+      });
+      return Object.values(map)
+        .filter(x => x.total > 0)
+        .map(c => ({ ...c, total: parseFloat(c.total.toFixed(2)) }))
+        .sort((a, b) => b.total - a.total);
+    } else {
+      const map = {};
+      rawItems.forEach(item => {
+        const groupName = item.categories?.category_groups?.name || 'Other';
+        const color = item.categories?.category_groups?.color || '#71717a';
+        if (!map[groupName]) map[groupName] = { name: groupName, color, total: 0 };
+        map[groupName].total += parseFloat(item.price) || 0;
+      });
+      return Object.values(map)
+        .filter(x => x.total > 0)
+        .map(c => ({ ...c, total: parseFloat(c.total.toFixed(2)) }))
+        .sort((a, b) => b.total - a.total);
+    }
+  })();
+
   const budgetProgressItems = budgets
     .filter(b => parseFloat(b.amount) > 0)
     .map(b => {
-      const catName = b.categories?.name || '';
-      const color = b.categories?.color || '#94a3b8';
-      const spent = categoryData.find(c => c.name === catName)?.total || 0;
+      const groupName = b.category_groups?.name || '';
+      const color = b.category_groups?.color || '#94a3b8';
+      const spent = categoryData.find(c => c.name === groupName && !expandedGroup)?.total || 0;
       const amount = parseFloat(b.amount);
       const pct = Math.min((spent / amount) * 100, 100);
       const over = spent > amount;
-      return { catName, color, spent, amount, pct, over };
+      return { groupName, color, spent, amount, pct, over };
     })
     .sort((a, b) => b.pct - a.pct);
 
@@ -269,11 +285,30 @@ export default function Analytics() {
         <>
           <section className="analytics-section">
             <h3 className="section-title">{t('spendingByCategory')}</h3>
+            {expandedGroup && (
+              <button
+                className="btn btn-ghost"
+                style={{ marginBottom: 8, fontSize: 13 }}
+                onClick={() => setExpandedGroup(null)}
+              >
+                ← {expandedGroup}
+              </button>
+            )}
             {categoryData.length === 0 ? (
               <p className="text-muted">{t('noDataMonth')}</p>
             ) : (
               <ResponsiveContainer width="100%" height={Math.max(180, categoryData.length * 40)}>
-                <BarChart data={categoryData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <BarChart
+                  data={categoryData}
+                  layout="vertical"
+                  margin={{ left: 8, right: 16 }}
+                  onClick={(data) => {
+                    if (!expandedGroup && data?.activePayload?.[0]) {
+                      setExpandedGroup(data.activePayload[0].payload.name);
+                    }
+                  }}
+                  style={{ cursor: expandedGroup ? 'default' : 'pointer' }}
+                >
                   <XAxis type="number" tick={{ fill: '#666', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={110} tick={{ fill: '#f0f0f0', fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip
@@ -306,18 +341,18 @@ export default function Analytics() {
 
             {editingBudgets && (
               <div className="budget-edit-panel">
-                {allCategories.map(cat => (
-                  <div key={cat.id} className="budget-edit-row">
-                    <span className="cat-dot" style={{ background: cat.color }} />
-                    <span className="budget-edit-name">{cat.name}</span>
+                {allGroups.map(grp => (
+                  <div key={grp.id} className="budget-edit-row">
+                    <span className="cat-dot" style={{ background: grp.color }} />
+                    <span className="budget-edit-name">{grp.name}</span>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       className="form-input budget-edit-input"
-                      value={budgetInputs[cat.id] ?? ''}
-                      onChange={e => setBudgetInputs(prev => ({ ...prev, [cat.id]: e.target.value }))}
-                      onBlur={e => handleBudgetBlur(cat.id, e.target.value)}
+                      value={budgetInputs[grp.id] ?? ''}
+                      onChange={e => setBudgetInputs(prev => ({ ...prev, [grp.id]: e.target.value }))}
+                      onBlur={e => handleBudgetBlur(grp.id, e.target.value)}
                       placeholder="0"
                     />
                     <span className="budget-edit-currency">PLN</span>
@@ -333,11 +368,11 @@ export default function Analytics() {
             {!editingBudgets && budgetProgressItems.length > 0 && (
               <div className="budget-progress-list">
                 {budgetProgressItems.map(b => (
-                  <div key={b.catName} className="budget-progress-item">
+                  <div key={b.groupName} className="budget-progress-item">
                     <div className="budget-progress-header">
                       <div className="budget-progress-left">
                         <span className="cat-dot" style={{ background: b.color }} />
-                        <span className="budget-progress-name">{b.catName}</span>
+                        <span className="budget-progress-name">{b.groupName}</span>
                       </div>
                       <span className="budget-progress-values" style={{ fontFamily: 'var(--font-mono)', color: b.over ? '#ef4444' : 'var(--text-muted)' }}>
                         {b.spent.toFixed(2)} / {b.amount.toFixed(2)} PLN

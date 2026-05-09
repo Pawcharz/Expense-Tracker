@@ -5,18 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import CategoryBadge from '../components/CategoryBadge';
-
-const CATEGORY_NAMES = [
-  'Meat', 'Dairy', 'Vegetables', 'Fruit', 'Bread & Bakery',
-  'Drinks', 'Snacks', 'Household', 'Hygiene', 'Subscriptions', 'Dining', 'Other',
-];
-
-const CATEGORY_KEYS = {
-  'Meat': 'categoryMeat', 'Dairy': 'categoryDairy', 'Vegetables': 'categoryVegetables',
-  'Fruit': 'categoryFruit', 'Bread & Bakery': 'categoryBread', 'Drinks': 'categoryDrinks',
-  'Snacks': 'categorySnacks', 'Household': 'categoryHousehold', 'Hygiene': 'categoryHygiene',
-  'Subscriptions': 'categorySubscriptions', 'Dining': 'categoryDining', 'Other': 'categoryOther',
-};
+import { fetchCategoryData } from '../lib/categories';
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -43,6 +32,10 @@ export default function ReceiptDetail() {
   const [editItems, setEditItems] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  const [groups, setGroups] = useState([]);
+  const [categoriesByGroup, setCategoriesByGroup] = useState({});
+  const [categoryMap, setCategoryMap] = useState({});
+
   useEffect(() => {
     async function load() {
       const { data: rec } = await supabase
@@ -57,11 +50,17 @@ export default function ReceiptDetail() {
 
       const { data: its } = await supabase
         .from('items')
-        .select('*, categories(name, color)')
+        .select('*, categories(name, category_groups(name, color))')
         .eq('receipt_id', id)
         .order('created_at');
 
       setItems(its || []);
+
+      const { groups: g, categoriesByGroup: cbg, categoryMap: cm } = await fetchCategoryData();
+      setGroups(g);
+      setCategoriesByGroup(cbg);
+      setCategoryMap(cm);
+
       setLoading(false);
     }
     load();
@@ -74,7 +73,8 @@ export default function ReceiptDetail() {
       _id: i,
       name: item.name,
       price: String(item.price),
-      category: item.categories?.name || 'Other',
+      category_group: item.categories?.category_groups?.name || 'Other',
+      category: item.categories?.name || 'Uncategorized',
     })));
     setError('');
     setEditing(true);
@@ -94,7 +94,14 @@ export default function ReceiptDetail() {
   }
 
   function addEditItem() {
-    setEditItems(prev => [...prev, { _id: Date.now(), name: '', price: '', category: 'Other' }]);
+    setEditItems(prev => [...prev, { _id: Date.now(), name: '', price: '', category_group: 'Other', category: 'Uncategorized' }]);
+  }
+
+  function handleGroupChange(editId, newGroup) {
+    const firstCat = categoriesByGroup[newGroup]?.[0]?.name || 'Uncategorized';
+    setEditItems(prev => prev.map(item =>
+      item._id === editId ? { ...item, category_group: newGroup, category: firstCat } : item
+    ));
   }
 
   async function handleSave() {
@@ -112,10 +119,6 @@ export default function ReceiptDetail() {
       const { error: delErr } = await supabase.from('items').delete().eq('receipt_id', receipt.id);
       if (delErr) throw delErr;
 
-      const { data: cats } = await supabase.from('categories').select('*');
-      const categoryMap = {};
-      (cats || []).forEach(c => { categoryMap[c.name] = c.id; });
-
       const itemsToInsert = editItems
         .filter(item => item.name && item.price !== '')
         .map(item => ({
@@ -123,7 +126,7 @@ export default function ReceiptDetail() {
           name: item.name,
           raw_name: null,
           price: parseFloat(item.price) || 0,
-          category_id: categoryMap[item.category] || null,
+          category_id: categoryMap[item.category]?.id || null,
         }));
 
       if (itemsToInsert.length > 0) {
@@ -134,7 +137,7 @@ export default function ReceiptDetail() {
       const { data: updatedRec } = await supabase.from('receipts').select('*').eq('id', receipt.id).single();
       const { data: updatedItems } = await supabase
         .from('items')
-        .select('*, categories(name, color)')
+        .select('*, categories(name, category_groups(name, color))')
         .eq('receipt_id', receipt.id)
         .order('created_at');
 
@@ -242,33 +245,46 @@ export default function ReceiptDetail() {
       {editing ? (
         <div className="items-list">
           {editItems.map(item => (
-            <div key={item._id} className="edit-item-row">
-              <input
-                className="form-input edit-item-name"
-                value={item.name}
-                onChange={e => updateEditItem(item._id, 'name', e.target.value)}
-                placeholder={t('itemNamePlaceholder')}
-              />
-              <input
-                type="number"
-                step="0.01"
-                className="form-input edit-item-price"
-                value={item.price}
-                onChange={e => updateEditItem(item._id, 'price', e.target.value)}
-                placeholder="0.00"
-              />
-              <select
-                className="form-select edit-item-category"
-                value={item.category}
-                onChange={e => updateEditItem(item._id, 'category', e.target.value)}
-              >
-                {CATEGORY_NAMES.map(c => (
-                  <option key={c} value={c}>{t(CATEGORY_KEYS[c])}</option>
-                ))}
-              </select>
-              <button className="btn-icon btn-danger" onClick={() => deleteEditItem(item._id)}>
-                <Trash2 size={16} />
-              </button>
+            <div key={item._id} className="item-row">
+              <div className="item-row-top">
+                <input
+                  className="form-input"
+                  value={item.name}
+                  onChange={e => updateEditItem(item._id, 'name', e.target.value)}
+                  placeholder={t('itemNamePlaceholder')}
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  className="form-input"
+                  value={item.price}
+                  onChange={e => updateEditItem(item._id, 'price', e.target.value)}
+                  placeholder="0.00"
+                />
+                <button className="btn-icon btn-danger" onClick={() => deleteEditItem(item._id)}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <div className="item-row-bottom">
+                <select
+                  className="form-select"
+                  value={item.category_group}
+                  onChange={e => handleGroupChange(item._id, e.target.value)}
+                >
+                  {groups.map(g => (
+                    <option key={g.name} value={g.name}>{g.name}</option>
+                  ))}
+                </select>
+                <select
+                  className="form-select"
+                  value={item.category}
+                  onChange={e => updateEditItem(item._id, 'category', e.target.value)}
+                >
+                  {(categoriesByGroup[item.category_group] || []).map(c => (
+                    <option key={c.name} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           ))}
           <button className="btn btn-ghost" onClick={addEditItem} style={{ marginTop: '8px', width: '100%' }}>
@@ -283,7 +299,10 @@ export default function ReceiptDetail() {
               <div className="detail-item-left">
                 <span className="detail-item-name">{item.name}</span>
                 {item.categories && (
-                  <CategoryBadge name={item.categories.name} color={item.categories.color} />
+                  <CategoryBadge
+                    name={item.categories.name}
+                    color={item.categories.category_groups?.color || '#71717a'}
+                  />
                 )}
               </div>
               <span
