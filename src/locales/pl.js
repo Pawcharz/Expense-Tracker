@@ -78,7 +78,7 @@ export default {
 
   // Category groups and subcategories
   categoryGroups: {
-    'Groceries': 'Artykuły spożywcze', 'Drinks': 'Napoje', 'Dining & Takeout': 'Gastronomia',
+    'Groceries': 'Artykuły spożywcze', 'Alcohol': 'Alkohol', 'Dining & Takeout': 'Gastronomia',
     'Household': 'Dom i ogród', 'Hygiene & Beauty': 'Higiena i uroda',
     'Health & Medical': 'Zdrowie', 'Clothing': 'Odzież', 'Transport': 'Transport',
     'Digital & Subscriptions': 'Cyfrowe i subskrypcje', 'Electronics': 'Elektronika',
@@ -92,8 +92,9 @@ export default {
     'Frozen Food': 'Mrożonki', 'Pantry & Dry Goods': 'Produkty sypkie',
     'Condiments & Spices': 'Przyprawy i sosy', 'Snacks & Sweets': 'Przekąski i słodycze',
     'Baby Food': 'Żywność dla dzieci', 'Water & Soft Drinks': 'Woda i napoje gazowane',
-    'Juice': 'Soki', 'Coffee & Tea': 'Kawa i herbata', 'Alcohol': 'Alkohol',
-    'Energy Drinks': 'Napoje energetyczne', 'Restaurant': 'Restauracja',
+    'Juice': 'Soki', 'Coffee & Tea': 'Kawa i herbata',
+    'Energy Drinks': 'Napoje energetyczne', 'Alcohol': 'Alkohol',
+    'Beer & Wine': 'Piwo i wino', 'Spirits & Liquor': 'Mocne alkohole', 'Restaurant': 'Restauracja',
     'Fast Food': 'Fast food', 'Café': 'Kawiarnia', 'Delivery': 'Dostawa', 'Bar': 'Bar',
     'Cleaning Products': 'Środki czystości', 'Kitchen Supplies': 'Akcesoria kuchenne',
     'Furniture': 'Meble', 'Home Decor': 'Dekoracje', 'Garden & Plants': 'Ogród i rośliny',
@@ -129,6 +130,26 @@ export default {
     'Pet Grooming': 'Pielęgnacja zwierząt', 'Pet Supplies': 'Akcesoria dla zwierząt',
     'Gifts': 'Prezenty', 'Charity': 'Darowizny', 'Flowers': 'Kwiaty',
     'Uncategorized': 'Nieskategoryzowane',
+  },
+  categoryGroupHints: {
+    'Groceries': 'Żywność, napoje i artykuły codziennego użytku ze sklepów spożywczych',
+    'Alcohol': 'Piwo, wino, alkohole i inne napoje alkoholowe',
+    'Dining & Takeout': 'Restauracje, kawiarnie, fast food, dowóz jedzenia i bary',
+    'Household': 'Środki czystości, artykuły kuchenne, meble, narzędzia i akcesoria domowe',
+    'Hygiene & Beauty': 'Kosmetyki, pielęgnacja skóry, włosów i ciała',
+    'Health & Medical': 'Wizyty lekarskie, apteka, siłownia i badania medyczne',
+    'Clothing': 'Ubrania, buty i akcesoria',
+    'Transport': 'Paliwo, komunikacja miejska, taksówki, serwis auta i parkowanie',
+    'Digital & Subscriptions': 'Oprogramowanie, streaming, usługi chmurowe i narzędzia online',
+    'Electronics': 'Telefony, komputery, audio i urządzenia smart home',
+    'Housing': 'Czynsz, rachunki, internet, ubezpieczenie i opłaty za mieszkanie',
+    'Education': 'Książki, kursy, przybory szkolne i czesne',
+    'Entertainment': 'Kino, imprezy, hobby i czas wolny',
+    'Travel': 'Noclegi, loty, wycieczki i ubezpieczenie podróżne',
+    'Finance & Fees': 'Opłaty bankowe, podatki, mandaty i spłaty kredytów',
+    'Pets': 'Karma, weterynarz, pielęgnacja i akcesoria dla zwierząt',
+    'Gifts & Donations': 'Prezenty, darowizny i kwiaty',
+    'Other': 'Wszystko, co nie pasuje do innej kategorii',
   },
 
   // Settings

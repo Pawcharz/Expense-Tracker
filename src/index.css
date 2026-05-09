@@ -982,6 +982,7 @@ a {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
 }
 .budget-edit-name {
   flex: 1;
@@ -1002,6 +1003,43 @@ a {
   font-size: 12px;
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+.btn-hint {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.btn-hint:hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.hint-bubble {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  z-index: 10;
+  line-height: 1.4;
 }
 
 /* ── Edit receipt item rows ── */

@@ -2,7 +2,7 @@ const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 const GROUP_NAMES = [
-  'Groceries','Drinks','Dining & Takeout','Household','Hygiene & Beauty',
+  'Groceries','Alcohol','Dining & Takeout','Household','Hygiene & Beauty',
   'Health & Medical','Clothing','Transport','Digital & Subscriptions',
   'Electronics','Housing','Education','Entertainment','Travel',
   'Finance & Fees','Pets','Gifts & Donations','Other',
@@ -11,7 +11,8 @@ const GROUP_NAMES = [
 const CATEGORY_NAMES = [
   'Meat & Fish','Dairy & Eggs','Cheese','Bread & Bakery','Vegetables','Fruit',
   'Frozen Food','Pantry & Dry Goods','Condiments & Spices','Snacks & Sweets','Baby Food',
-  'Water & Soft Drinks','Juice','Coffee & Tea','Alcohol','Energy Drinks',
+  'Water & Soft Drinks','Juice','Coffee & Tea','Energy Drinks',
+  'Alcohol','Beer & Wine','Spirits & Liquor',
   'Restaurant','Fast Food','Café','Delivery','Bar',
   'Cleaning Products','Kitchen Supplies','Furniture','Home Decor','Garden & Plants',
   'Tools & Hardware','Storage',

@@ -27,6 +27,7 @@ export default function Analytics() {
   const [editingBudgets, setEditingBudgets] = useState(false);
   const [budgetInputs, setBudgetInputs] = useState({});
   const [allGroups, setAllGroups] = useState([]);
+  const [activeHint, setActiveHint] = useState(null);
 
   useEffect(() => {
     loadAll();
@@ -346,6 +347,14 @@ export default function Analytics() {
                   <div key={grp.id} className="budget-edit-row">
                     <span className="cat-dot" style={{ background: grp.color }} />
                     <span className="budget-edit-name">{t('categoryGroups')[grp.name] || grp.name}</span>
+                    <button
+                      className="btn-hint"
+                      onClick={() => setActiveHint(activeHint === grp.name ? null : grp.name)}
+                      aria-label="Info"
+                    >?</button>
+                    {activeHint === grp.name && (
+                      <span className="hint-bubble">{t('categoryGroupHints')?.[grp.name]}</span>
+                    )}
                     <input
                       type="number"
                       min="0"

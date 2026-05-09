@@ -78,7 +78,7 @@ export default {
 
   // Category groups and subcategories
   categoryGroups: {
-    'Groceries': 'Groceries', 'Drinks': 'Drinks', 'Dining & Takeout': 'Dining & Takeout',
+    'Groceries': 'Groceries', 'Alcohol': 'Alcohol', 'Dining & Takeout': 'Dining & Takeout',
     'Household': 'Household', 'Hygiene & Beauty': 'Hygiene & Beauty',
     'Health & Medical': 'Health & Medical', 'Clothing': 'Clothing', 'Transport': 'Transport',
     'Digital & Subscriptions': 'Digital & Subscriptions', 'Electronics': 'Electronics',
@@ -92,7 +92,8 @@ export default {
     'Frozen Food': 'Frozen Food', 'Pantry & Dry Goods': 'Pantry & Dry Goods',
     'Condiments & Spices': 'Condiments & Spices', 'Snacks & Sweets': 'Snacks & Sweets',
     'Baby Food': 'Baby Food', 'Water & Soft Drinks': 'Water & Soft Drinks', 'Juice': 'Juice',
-    'Coffee & Tea': 'Coffee & Tea', 'Alcohol': 'Alcohol', 'Energy Drinks': 'Energy Drinks',
+    'Coffee & Tea': 'Coffee & Tea', 'Energy Drinks': 'Energy Drinks',
+    'Alcohol': 'Alcohol', 'Beer & Wine': 'Beer & Wine', 'Spirits & Liquor': 'Spirits & Liquor',
     'Restaurant': 'Restaurant', 'Fast Food': 'Fast Food', 'Café': 'Café',
     'Delivery': 'Delivery', 'Bar': 'Bar', 'Cleaning Products': 'Cleaning Products',
     'Kitchen Supplies': 'Kitchen Supplies', 'Furniture': 'Furniture', 'Home Decor': 'Home Decor',
@@ -123,6 +124,26 @@ export default {
     'Fines': 'Fines', 'Loan Payments': 'Loan Payments', 'Pet Food': 'Pet Food',
     'Vet': 'Vet', 'Pet Grooming': 'Pet Grooming', 'Pet Supplies': 'Pet Supplies',
     'Gifts': 'Gifts', 'Charity': 'Charity', 'Flowers': 'Flowers', 'Uncategorized': 'Uncategorized',
+  },
+  categoryGroupHints: {
+    'Groceries': 'Food, beverages, and everyday consumables from supermarkets and shops',
+    'Alcohol': 'Beer, wine, spirits, and other alcoholic beverages',
+    'Dining & Takeout': 'Restaurants, cafés, fast food, food delivery, and bars',
+    'Household': 'Cleaning products, kitchen supplies, furniture, tools, and home items',
+    'Hygiene & Beauty': 'Personal care, cosmetics, skincare, and haircare products',
+    'Health & Medical': 'Doctor visits, pharmacy, gym, and medical tests',
+    'Clothing': 'Clothes, shoes, and accessories',
+    'Transport': 'Fuel, public transport, taxis, car maintenance, and parking',
+    'Digital & Subscriptions': 'Software, streaming, cloud services, and online tools',
+    'Electronics': 'Phones, computers, audio, and smart home devices',
+    'Housing': 'Rent, utilities, internet, insurance, and building charges',
+    'Education': 'Books, courses, school supplies, and tuition',
+    'Entertainment': 'Cinema, events, hobbies, and leisure activities',
+    'Travel': 'Accommodation, flights, tours, and travel insurance',
+    'Finance & Fees': 'Bank fees, taxes, fines, and loan payments',
+    'Pets': 'Pet food, vet, grooming, and pet supplies',
+    'Gifts & Donations': 'Gifts, charity, and flowers',
+    'Other': 'Anything that does not fit another category',
   },
 
   // Settings
