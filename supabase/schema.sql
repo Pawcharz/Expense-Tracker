@@ -48,8 +48,9 @@ create table public.items (
   id          uuid primary key default gen_random_uuid(),
   receipt_id  uuid references public.receipts(id) on delete cascade not null,
   name        text not null,
-  raw_name    text,         -- original Polish text from receipt
+  raw_name    text,         -- original text from receipt exactly as printed
   price       numeric(10,2) not null,
+  discount    numeric(10,2) not null default 0,
   category_id integer references public.categories(id),
   created_at  timestamptz default now()
 );

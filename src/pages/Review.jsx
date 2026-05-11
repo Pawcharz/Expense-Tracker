@@ -26,6 +26,7 @@ export default function Review() {
     (state?.parsedData?.items || []).map((item, i) => ({
       ...item,
       _id: i,
+      discount: item.discount || 0,
       category_group: item.category_group || 'Other',
       category: item.category || 'Uncategorized',
     }))
@@ -53,7 +54,7 @@ export default function Review() {
 
   if (!state) return null;
 
-  const total = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+  const total = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0), 0);
 
   function updateItem(id, field, value) {
     setItems(prev => prev.map(item => item._id === id ? { ...item, [field]: value } : item));
@@ -65,7 +66,7 @@ export default function Review() {
 
   function addItem() {
     const newId = Date.now();
-    setItems(prev => [...prev, { _id: newId, name: '', price: '', category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
+    setItems(prev => [...prev, { _id: newId, name: '', price: '', discount: 0, category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
   }
 
   function handleGroupChange(id, newGroup) {
@@ -100,6 +101,7 @@ export default function Review() {
           name: item.name,
           raw_name: item.raw_name || null,
           price: parseFloat(item.price) || 0,
+          discount: parseFloat(item.discount) || 0,
           category_id: categoryMap[item.category]?.id || null,
         }));
 
@@ -179,6 +181,16 @@ export default function Review() {
                 onChange={e => updateItem(item._id, 'price', e.target.value)}
                 placeholder="0.00"
                 step="0.01"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              />
+              <input
+                type="number"
+                className="form-input item-discount"
+                value={item.discount}
+                onChange={e => updateItem(item._id, 'discount', e.target.value)}
+                placeholder="disc."
+                step="0.01"
+                min="0"
                 style={{ fontFamily: 'var(--font-mono)' }}
               />
               <button

@@ -566,7 +566,7 @@ main, .page {
 }
 .item-row-top {
   display: grid;
-  grid-template-columns: 1fr 80px 36px;
+  grid-template-columns: 1fr 80px 60px 36px;
   gap: 6px;
   align-items: center;
 }
@@ -578,6 +578,12 @@ main, .page {
 
 .item-price {
   text-align: right;
+}
+
+.item-discount {
+  width: 60px;
+  min-width: 50px;
+  flex-shrink: 0;
 }
 
 .add-item-btn {

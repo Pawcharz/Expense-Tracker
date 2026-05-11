@@ -88,6 +88,7 @@ export default function ReceiptDetail() {
       _id: i,
       name: item.name,
       price: String(item.price),
+      discount: String(item.discount || 0),
       category_group: item.categories?.category_groups?.name || 'Other',
       category: item.categories?.name || 'Uncategorized',
     })));
@@ -109,7 +110,7 @@ export default function ReceiptDetail() {
   }
 
   function addEditItem() {
-    setEditItems(prev => [...prev, { _id: Date.now(), name: '', price: '', category_group: 'Other', category: 'Uncategorized' }]);
+    setEditItems(prev => [...prev, { _id: Date.now(), name: '', price: '', discount: '0', category_group: 'Other', category: 'Uncategorized' }]);
   }
 
   function handleGroupChange(editId, newGroup) {
@@ -123,7 +124,7 @@ export default function ReceiptDetail() {
     setSaving(true);
     setError('');
     try {
-      const editTotal = editItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+      const editTotal = editItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0), 0);
 
       const { error: recErr } = await supabase
         .from('receipts')
@@ -141,6 +142,7 @@ export default function ReceiptDetail() {
           name: item.name,
           raw_name: null,
           price: parseFloat(item.price) || 0,
+          discount: parseFloat(item.discount) || 0,
           category_id: categoryMap[item.category]?.id || null,
         }));
 
@@ -194,7 +196,7 @@ export default function ReceiptDetail() {
     );
   }
 
-  const editTotal = editItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+  const editTotal = editItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0), 0);
 
   return (
     <div className="page detail-page">
@@ -271,10 +273,21 @@ export default function ReceiptDetail() {
                 <input
                   type="number"
                   step="0.01"
-                  className="form-input"
+                  className="form-input item-price"
                   value={item.price}
                   onChange={e => updateEditItem(item._id, 'price', e.target.value)}
                   placeholder="0.00"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                />
+                <input
+                  type="number"
+                  className="form-input item-discount"
+                  value={item.discount}
+                  onChange={e => updateEditItem(item._id, 'discount', e.target.value)}
+                  placeholder="disc."
+                  step="0.01"
+                  min="0"
+                  style={{ fontFamily: 'var(--font-mono)' }}
                 />
                 <button className="btn-icon btn-danger" onClick={() => deleteEditItem(item._id)}>
                   <Trash2 size={16} />
@@ -320,15 +333,27 @@ export default function ReceiptDetail() {
                   />
                 )}
               </div>
-              <span
-                className="detail-item-price"
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  color: item.price < 0 ? '#22c55e' : 'var(--text)',
-                }}
-              >
-                {item.price < 0 ? '−' : ''}{Math.abs(item.price).toFixed(2)} PLN
-              </span>
+              {item.discount > 0 ? (
+                <span className="detail-item-price" style={{ fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '11px' }}>
+                    {item.price.toFixed(2)}
+                  </span>
+                  {' '}
+                  <span style={{ color: '#22c55e' }}>-{item.discount.toFixed(2)}</span>
+                  {' = '}
+                  {(item.price - item.discount).toFixed(2)} PLN
+                </span>
+              ) : (
+                <span
+                  className="detail-item-price"
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    color: item.price < 0 ? '#22c55e' : 'var(--text)',
+                  }}
+                >
+                  {item.price < 0 ? '−' : ''}{Math.abs(item.price).toFixed(2)} PLN
+                </span>
+              )}
             </div>
           ))}
         </div>

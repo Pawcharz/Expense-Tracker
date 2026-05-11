@@ -13,7 +13,7 @@ export default function ManualEntry() {
 
   const [store, setStore] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
-  const [items, setItems] = useState([{ _id: 0, name: '', price: '', category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
+  const [items, setItems] = useState([{ _id: 0, name: '', price: '', discount: 0, category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
   const [groups, setGroups] = useState([]);
   const [categoriesByGroup, setCategoriesByGroup] = useState({});
   const [categoryMap, setCategoryMap] = useState({});
@@ -28,7 +28,7 @@ export default function ManualEntry() {
     });
   }, []);
 
-  const total = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+  const total = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0), 0);
 
   function updateItem(id, field, value) {
     setItems(prev => prev.map(item => item._id === id ? { ...item, [field]: value } : item));
@@ -39,7 +39,7 @@ export default function ManualEntry() {
   }
 
   function addItem() {
-    setItems(prev => [...prev, { _id: Date.now(), name: '', price: '', category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
+    setItems(prev => [...prev, { _id: Date.now(), name: '', price: '', discount: 0, category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
   }
 
   function handleGroupChange(id, newGroup) {
@@ -67,6 +67,7 @@ export default function ManualEntry() {
           name: item.name,
           raw_name: item.raw_name || null,
           price: parseFloat(item.price) || 0,
+          discount: parseFloat(item.discount) || 0,
           category_id: categoryMap[item.category]?.id || null,
         }));
 
@@ -129,6 +130,17 @@ export default function ManualEntry() {
                     value={item.price}
                     onChange={e => updateItem(item._id, 'price', e.target.value)}
                     placeholder="0.00"
+                    style={{ fontFamily: 'var(--font-mono)' }}
+                  />
+                  <input
+                    type="number"
+                    className="form-input item-discount"
+                    value={item.discount}
+                    onChange={e => updateItem(item._id, 'discount', e.target.value)}
+                    placeholder="disc."
+                    step="0.01"
+                    min="0"
+                    style={{ fontFamily: 'var(--font-mono)' }}
                   />
                   <button
                     className="btn-icon btn-danger"

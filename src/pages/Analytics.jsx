@@ -317,6 +317,7 @@ export default function Analytics() {
                     formatter={v => [`${v.toFixed(2)} PLN`]}
                     contentStyle={{ background: '#141414', border: '1px solid #222', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
                     labelStyle={{ color: '#f0f0f0' }}
+                    itemStyle={{ color: '#f0f0f0' }}
                     cursor={{ fill: '#ffffff0a' }}
                   />
                   <Bar dataKey="total" radius={[0, 4, 4, 0]}>
@@ -438,6 +439,7 @@ export default function Analytics() {
                   formatter={v => [`${v.toFixed(2)} PLN`]}
                   contentStyle={{ background: '#141414', border: '1px solid #222', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
                   labelStyle={{ color: '#f0f0f0' }}
+                  itemStyle={{ color: '#f0f0f0' }}
                 />
                 <Line type="monotone" dataKey="total" stroke="#8b5cf6" strokeWidth={2} dot={{ fill: '#8b5cf6', r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>

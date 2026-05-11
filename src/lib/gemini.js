@@ -46,10 +46,11 @@ const RESPONSE_SCHEMA = {
           name: { type: 'string' },
           raw_name: { type: 'string' },
           price: { type: 'number' },
+          discount: { type: 'number' },
           category_group: { type: 'string' },
           category: { type: 'string' },
         },
-        required: ['name', 'raw_name', 'price', 'category_group', 'category'],
+        required: ['name', 'raw_name', 'price', 'discount', 'category_group', 'category'],
       },
     },
   },
@@ -63,11 +64,13 @@ function buildParsePrompt(language) {
   return `You are a receipt parser. Extract all purchased line items from the receipt. The receipt may be in any language.
 
 Rules:
-- Every item must appear, including discounts (give discounts a negative price and name them clearly)
+- Every item must appear
 - Do not invent items not on the receipt
 - raw_name: original text from the receipt exactly as printed
 - name: human-readable name in ${nameLang}
-- price: numeric value (negative for discounts)
+- price: the original/full price of the item (always a positive number)
+- discount: the discount applied to this item (positive number, default 0). If the receipt shows a discount line directly tied to an item, set that item's discount to the discount amount (positive) rather than creating a separate negative-price item. If a general discount appears that cannot be attributed to a specific item, create a separate item named "Store Discount" (or translated equivalent) with price=0 and discount=<amount>.
+- Items must NEVER have a negative price. Use the discount field instead.
 - category_group: pick EXACTLY one from this list: ${groups}
 - category: pick EXACTLY one from this list that fits within the chosen group: ${categories}
 - date: output as YYYY-MM-DDTHH:MM (ISO datetime, 24h). If a time is visible on the receipt, include it. If no time is visible, use YYYY-MM-DDT00:00. Always output YYYY-MM-DD with year first — never swap day and month when year leads.
