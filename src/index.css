@@ -566,7 +566,7 @@ main, .page {
 }
 .item-row-top {
   display: grid;
-  grid-template-columns: 1fr 80px 60px 36px;
+  grid-template-columns: 1fr 50px 80px 60px 36px;
   gap: 6px;
   align-items: center;
 }
@@ -584,6 +584,54 @@ main, .page {
   width: 60px;
   min-width: 50px;
   flex-shrink: 0;
+}
+
+.item-qty {
+  text-align: center;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+/* Two-column form row used for Date + Currency side-by-side */
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 10px;
+  margin-bottom: 14px;
+  align-items: end;
+}
+
+.date-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-warning-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #f59e0b;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.date-warning-btn:hover {
+  background: #f59e0b22;
+}
+
+.total-converted {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12px;
+  margin-top: -8px;
+  margin-bottom: 4px;
 }
 
 .add-item-btn {

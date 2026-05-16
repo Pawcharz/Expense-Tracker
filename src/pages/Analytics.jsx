@@ -7,10 +7,12 @@ import {
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
+import { useCurrency } from '../hooks/useCurrency';
 
 export default function Analytics() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { displayCurrency, rateTo, ratesReady } = useCurrency();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -31,7 +33,9 @@ export default function Analytics() {
 
   useEffect(() => {
     loadAll();
-  }, [month, year, trendSpan]);
+    // ratesReady triggers a reload once FX rates land so initial render uses real numbers
+    // and a display-currency switch refreshes all aggregates without a manual nav.
+  }, [month, year, trendSpan, displayCurrency, ratesReady]);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1); }
@@ -107,21 +111,27 @@ export default function Analytics() {
 
     const { data: receipts } = await supabase
       .from('receipts')
-      .select('id')
+      .select('id, currency')
       .eq('user_id', user.id)
       .gte('date', from)
       .lt('date', to);
 
     if (!receipts?.length) { setRawItems([]); return; }
     const ids = receipts.map(r => r.id);
+    const currencyByReceipt = Object.fromEntries(receipts.map(r => [r.id, r.currency || 'PLN']));
 
     const { data: items } = await supabase
       .from('items')
-      .select('price, categories(name, category_groups(name, color))')
+      .select('price, receipt_id, categories(name, category_groups(name, color))')
       .in('receipt_id', ids)
       .gt('price', 0);
 
-    setRawItems(items || []);
+    // Attach currency to each item so aggregation can convert per-row.
+    const enriched = (items || []).map(item => ({
+      ...item,
+      currency: currencyByReceipt[item.receipt_id] || 'PLN',
+    }));
+    setRawItems(enriched);
   }
 
   async function loadTrend() {
@@ -142,12 +152,15 @@ export default function Analytics() {
 
       const { data } = await supabase
         .from('receipts')
-        .select('total')
+        .select('total, currency')
         .eq('user_id', user.id)
         .gte('date', from)
         .lt('date', to);
 
-      const total = (data || []).reduce((sum, r) => sum + (parseFloat(r.total) || 0), 0);
+      const total = (data || []).reduce((sum, r) => {
+        const amount = parseFloat(r.total) || 0;
+        return sum + amount * rateTo(r.currency || 'PLN', displayCurrency);
+      }, 0);
       return { label: `${monthNamesShort[m]} ${y}`, total: parseFloat(total.toFixed(2)) };
     }));
 
@@ -162,7 +175,7 @@ export default function Analytics() {
 
     const { data } = await supabase
       .from('receipts')
-      .select('store, total')
+      .select('store, total, currency')
       .eq('user_id', user.id)
       .gte('date', from)
       .lt('date', to);
@@ -173,7 +186,8 @@ export default function Analytics() {
     data.forEach(r => {
       const s = r.store || 'Unknown';
       if (!map[s]) map[s] = 0;
-      map[s] += parseFloat(r.total) || 0;
+      const amount = parseFloat(r.total) || 0;
+      map[s] += amount * rateTo(r.currency || 'PLN', displayCurrency);
     });
 
     const sorted = Object.entries(map)
@@ -192,17 +206,18 @@ export default function Analytics() {
 
     const { data: receipts } = await supabase
       .from('receipts')
-      .select('id')
+      .select('id, currency')
       .eq('user_id', user.id)
       .gte('date', from)
       .lt('date', to);
 
     if (!receipts?.length) { setTopItems([]); return; }
     const ids = receipts.map(r => r.id);
+    const currencyByReceipt = Object.fromEntries(receipts.map(r => [r.id, r.currency || 'PLN']));
 
     const { data: items } = await supabase
       .from('items')
-      .select('name, price')
+      .select('name, price, receipt_id, quantity')
       .in('receipt_id', ids)
       .gt('price', 0);
 
@@ -212,8 +227,11 @@ export default function Analytics() {
     items.forEach(item => {
       const key = item.name.toLowerCase();
       if (!map[key]) map[key] = { name: item.name, count: 0, total: 0 };
-      map[key].count++;
-      map[key].total += parseFloat(item.price) || 0;
+      // count by quantity so multi-unit lines (qty=3) don't undercount frequency
+      const qty = parseFloat(item.quantity) || 1;
+      map[key].count += qty >= 1 ? Math.round(qty) : 1;
+      const cur = currencyByReceipt[item.receipt_id] || 'PLN';
+      map[key].total += (parseFloat(item.price) || 0) * rateTo(cur, displayCurrency);
     });
 
     const sorted = Object.values(map)
@@ -225,6 +243,7 @@ export default function Analytics() {
   }
 
   const categoryData = (() => {
+    const toDisp = (item) => (parseFloat(item.price) || 0) * rateTo(item.currency || 'PLN', displayCurrency);
     if (expandedGroup) {
       const filtered = rawItems.filter(i => i.categories?.category_groups?.name === expandedGroup);
       const map = {};
@@ -232,7 +251,7 @@ export default function Analytics() {
         const catName = item.categories?.name || 'Uncategorized';
         const color = item.categories?.category_groups?.color || '#71717a';
         if (!map[catName]) map[catName] = { name: catName, displayName: t('categoryNames')[catName] || catName, color, total: 0 };
-        map[catName].total += parseFloat(item.price) || 0;
+        map[catName].total += toDisp(item);
       });
       return Object.values(map)
         .filter(x => x.total > 0)
@@ -244,7 +263,7 @@ export default function Analytics() {
         const groupName = item.categories?.category_groups?.name || 'Other';
         const color = item.categories?.category_groups?.color || '#71717a';
         if (!map[groupName]) map[groupName] = { name: groupName, displayName: t('categoryGroups')[groupName] || groupName, color, total: 0 };
-        map[groupName].total += parseFloat(item.price) || 0;
+        map[groupName].total += toDisp(item);
       });
       return Object.values(map)
         .filter(x => x.total > 0)
@@ -314,7 +333,7 @@ export default function Analytics() {
                   <XAxis type="number" tick={{ fill: '#666', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="displayName" width={110} tick={{ fill: '#f0f0f0', fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip
-                    formatter={v => [`${v.toFixed(2)} PLN`]}
+                    formatter={v => [`${v.toFixed(2)} ${displayCurrency}`]}
                     contentStyle={{ background: '#141414', border: '1px solid #222', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
                     labelStyle={{ color: '#f0f0f0' }}
                     itemStyle={{ color: '#f0f0f0' }}
@@ -367,7 +386,7 @@ export default function Analytics() {
                         onBlur={e => handleBudgetBlur(grp.id, e.target.value)}
                         placeholder="0"
                       />
-                      <span className="budget-edit-currency">PLN</span>
+                      <span className="budget-edit-currency">{displayCurrency}</span>
                     </div>
                     {activeHint === grp.name && (
                       <span className="hint-bubble">{t('categoryGroupHints')?.[grp.name]}</span>
@@ -391,7 +410,7 @@ export default function Analytics() {
                         <span className="budget-progress-name">{b.displayGroupName}</span>
                       </div>
                       <span className="budget-progress-values" style={{ fontFamily: 'var(--font-mono)', color: b.over ? '#ef4444' : 'var(--text-muted)' }}>
-                        {b.spent.toFixed(2)} / {b.amount.toFixed(2)} PLN
+                        {b.spent.toFixed(2)} / {b.amount.toFixed(2)} {displayCurrency}
                       </span>
                     </div>
                     <div className="budget-bar-track">
@@ -410,7 +429,7 @@ export default function Analytics() {
                   <span style={{ fontFamily: 'var(--font-mono)' }}>
                     {budgetProgressItems.reduce((s, b) => s + b.spent, 0).toFixed(2)}
                     {' / '}
-                    {budgetProgressItems.reduce((s, b) => s + b.amount, 0).toFixed(2)} PLN
+                    {budgetProgressItems.reduce((s, b) => s + b.amount, 0).toFixed(2)} {displayCurrency}
                   </span>
                 </div>
               </div>
@@ -436,7 +455,7 @@ export default function Analytics() {
                 <XAxis dataKey="label" tick={{ fill: '#666', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#666', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={v => [`${v.toFixed(2)} PLN`]}
+                  formatter={v => [`${v.toFixed(2)} ${displayCurrency}`]}
                   contentStyle={{ background: '#141414', border: '1px solid #222', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
                   labelStyle={{ color: '#f0f0f0' }}
                   itemStyle={{ color: '#f0f0f0' }}
@@ -456,7 +475,7 @@ export default function Analytics() {
                   <li key={i} className="ranked-item">
                     <span className="rank-num">{i + 1}</span>
                     <span className="rank-name">{s.store}</span>
-                    <span className="rank-value" style={{ fontFamily: 'var(--font-mono)' }}>{s.total.toFixed(2)} PLN</span>
+                    <span className="rank-value" style={{ fontFamily: 'var(--font-mono)' }}>{s.total.toFixed(2)} {displayCurrency}</span>
                   </li>
                 ))}
               </ol>
@@ -474,7 +493,7 @@ export default function Analytics() {
                     <span className="rank-num">{i + 1}</span>
                     <span className="rank-name">{item.name}</span>
                     <span className="rank-meta text-muted">×{item.count}</span>
-                    <span className="rank-value" style={{ fontFamily: 'var(--font-mono)' }}>{item.total.toFixed(2)} PLN</span>
+                    <span className="rank-value" style={{ fontFamily: 'var(--font-mono)' }}>{item.total.toFixed(2)} {displayCurrency}</span>
                   </li>
                 ))}
               </ol>

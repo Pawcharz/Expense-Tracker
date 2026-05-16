@@ -87,6 +87,10 @@ Run the following scripts in order in the Supabase SQL editor:
 1. `supabase/schema.sql` — creates all tables, RLS policies, grants, and the receipt image storage bucket
 2. `supabase/categories_migration.sql` — seeds category groups and subcategories
 
+For an existing deployment, apply the incremental migration:
+
+3. `supabase/currency_quantity_migration.sql` — adds `receipts.currency`, `items.quantity`, and `user_settings.display_currency` columns (idempotent — uses `add column if not exists`)
+
 ### Run locally
 
 ```bash

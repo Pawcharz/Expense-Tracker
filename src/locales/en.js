@@ -38,14 +38,19 @@ export default {
   storeLabel: 'Store',
   storePlaceholder: 'Store name',
   dateLabel: 'Date',
+  currencyLabel: 'Currency',
   itemsLabel: 'Items',
   itemNamePlaceholder: 'Item name',
+  qtyPlaceholder: 'qty',
+  qtyShort: 'Qty',
   addItem: 'Add item',
   totalLabel: 'Total',
   saveReceipt: 'Save receipt',
   saving: 'Saving…',
   discard: 'Discard',
   failedToSave: 'Failed to save receipt',
+  oldDateWarning: 'The detected date is more than a week old. Double-check it matches the receipt.',
+  convertedFromHint: 'Converted from',
 
   // History
   searchPlaceholder: 'Search stores or items…',
@@ -151,6 +156,8 @@ export default {
   // Settings
   settingsTitle: 'Settings',
   languageLabel: 'Language',
+  displayCurrencyLabel: 'Display currency',
+  displayCurrencyHint: 'All totals in History and Analytics are converted to this currency using current exchange rates.',
   accountLabel: 'Account',
   signedInAs: 'Signed in as',
   signOut: 'Sign out',

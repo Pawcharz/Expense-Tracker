@@ -3,17 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { Trash2, Plus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
+import { useCurrency } from '../hooks/useCurrency';
 import { supabase } from '../lib/supabase';
 import { fetchCategoryData } from '../lib/categories';
 
 export default function ManualEntry() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { displayCurrency, supportedCurrencies, toDisplay, format } = useCurrency();
   const navigate = useNavigate();
 
   const [store, setStore] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
-  const [items, setItems] = useState([{ _id: 0, name: '', price: '', discount: 0, category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
+  const [currency, setCurrency] = useState(displayCurrency || 'PLN');
+  const [items, setItems] = useState([{
+    _id: 0, name: '', price: '', discount: 0, quantity: 1,
+    category_group: 'Other', category: 'Uncategorized', raw_name: '',
+  }]);
   const [groups, setGroups] = useState([]);
   const [categoriesByGroup, setCategoriesByGroup] = useState({});
   const [categoryMap, setCategoryMap] = useState({});
@@ -28,7 +34,18 @@ export default function ManualEntry() {
     });
   }, []);
 
-  const total = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0), 0);
+  // Sync receipt currency to the display currency once it loads from settings.
+  useEffect(() => {
+    if (displayCurrency) setCurrency(c => (c === 'PLN' ? displayCurrency : c));
+  }, [displayCurrency]);
+
+  const total = items.reduce(
+    (sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0),
+    0
+  );
+
+  const showConversion = currency !== displayCurrency;
+  const convertedTotal = showConversion ? toDisplay(total, currency) : null;
 
   function updateItem(id, field, value) {
     setItems(prev => prev.map(item => item._id === id ? { ...item, [field]: value } : item));
@@ -39,7 +56,10 @@ export default function ManualEntry() {
   }
 
   function addItem() {
-    setItems(prev => [...prev, { _id: Date.now(), name: '', price: '', discount: 0, category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
+    setItems(prev => [...prev, {
+      _id: Date.now(), name: '', price: '', discount: 0, quantity: 1,
+      category_group: 'Other', category: 'Uncategorized', raw_name: '',
+    }]);
   }
 
   function handleGroupChange(id, newGroup) {
@@ -55,7 +75,14 @@ export default function ManualEntry() {
     try {
       const { data: receipt, error: receiptError } = await supabase
         .from('receipts')
-        .insert({ user_id: user.id, store: store || null, date, total: parseFloat(total.toFixed(2)), image_url: null })
+        .insert({
+          user_id: user.id,
+          store: store || null,
+          date,
+          total: parseFloat(total.toFixed(2)),
+          currency,
+          image_url: null,
+        })
         .select()
         .single();
       if (receiptError) throw receiptError;
@@ -68,6 +95,7 @@ export default function ManualEntry() {
           raw_name: item.raw_name || null,
           price: parseFloat(item.price) || 0,
           discount: parseFloat(item.discount) || 0,
+          quantity: parseFloat(item.quantity) || 1,
           category_id: categoryMap[item.category]?.id || null,
         }));
 
@@ -101,14 +129,28 @@ export default function ManualEntry() {
           />
         </div>
 
-        <div className="form-group">
-          <label className="form-label">{t('dateLabel')}</label>
-          <input
-            type="datetime-local"
-            className="form-input"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-          />
+        <div className="form-row-2col">
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">{t('dateLabel')}</label>
+            <input
+              type="datetime-local"
+              className="form-input"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">{t('currencyLabel')}</label>
+            <select
+              className="form-select"
+              value={currency}
+              onChange={e => setCurrency(e.target.value)}
+            >
+              {supportedCurrencies.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="form-group">
@@ -122,6 +164,17 @@ export default function ManualEntry() {
                     value={item.name}
                     onChange={e => updateItem(item._id, 'name', e.target.value)}
                     placeholder={t('itemNamePlaceholder')}
+                  />
+                  <input
+                    type="number"
+                    className="form-input item-qty"
+                    value={item.quantity}
+                    onChange={e => updateItem(item._id, 'quantity', e.target.value)}
+                    placeholder={t('qtyPlaceholder')}
+                    step="0.001"
+                    min="0"
+                    style={{ fontFamily: 'var(--font-mono)' }}
+                    title={t('qtyShort')}
                   />
                   <input
                     type="number"
@@ -181,8 +234,13 @@ export default function ManualEntry() {
 
         <div className="review-total">
           <span>{t('totalLabel')}</span>
-          <span style={{ fontFamily: 'var(--font-mono)' }}>{total.toFixed(2)} PLN</span>
+          <span style={{ fontFamily: 'var(--font-mono)' }}>{total.toFixed(2)} {currency}</span>
         </div>
+        {showConversion && convertedTotal != null && (
+          <div className="total-converted text-muted" style={{ fontFamily: 'var(--font-mono)' }}>
+            ≈ {format(convertedTotal, displayCurrency)}
+          </div>
+        )}
 
         {error && <p className="error-msg">{error}</p>}
 

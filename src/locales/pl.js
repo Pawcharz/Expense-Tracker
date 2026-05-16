@@ -38,14 +38,19 @@ export default {
   storeLabel: 'Sklep',
   storePlaceholder: 'Nazwa sklepu',
   dateLabel: 'Data',
+  currencyLabel: 'Waluta',
   itemsLabel: 'Pozycje',
   itemNamePlaceholder: 'Nazwa pozycji',
+  qtyPlaceholder: 'ilość',
+  qtyShort: 'Ilość',
   addItem: 'Dodaj pozycję',
   totalLabel: 'Suma',
   saveReceipt: 'Zapisz paragon',
   saving: 'Zapisywanie…',
   discard: 'Odrzuć',
   failedToSave: 'Nie udało się zapisać paragonu',
+  oldDateWarning: 'Wykryta data jest starsza niż tydzień. Sprawdź, czy zgadza się z paragonem.',
+  convertedFromHint: 'Przeliczono z',
 
   // History
   searchPlaceholder: 'Szukaj sklepów lub pozycji…',
@@ -157,6 +162,8 @@ export default {
   // Settings
   settingsTitle: 'Ustawienia',
   languageLabel: 'Język',
+  displayCurrencyLabel: 'Waluta wyświetlania',
+  displayCurrencyHint: 'Wszystkie sumy w Historii i Analityce są przeliczane na tę walutę po aktualnym kursie.',
   accountLabel: 'Konto',
   signedInAs: 'Zalogowano jako',
   signOut: 'Wyloguj się',

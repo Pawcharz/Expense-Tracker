@@ -4,6 +4,7 @@ import { Trash2, ArrowLeft, Pencil, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
+import { useCurrency } from '../hooks/useCurrency';
 import CategoryBadge from '../components/CategoryBadge';
 import { fetchCategoryData } from '../lib/categories';
 
@@ -28,11 +29,20 @@ function toDatetimeLocal(val) {
   return val.slice(0, 16);
 }
 
+// Quantity display helper — hides "× 1" for the common case.
+function formatQty(q) {
+  const n = Number(q);
+  if (!isFinite(n) || n === 1) return '';
+  // Trim trailing zeros for fractional weights e.g. 0.500 → 0.5
+  return `× ${String(n).replace(/\.?0+$/, '')} `;
+}
+
 
 export default function ReceiptDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { displayCurrency, supportedCurrencies, toDisplay, format } = useCurrency();
   const navigate = useNavigate();
   const [receipt, setReceipt] = useState(null);
   const [items, setItems] = useState([]);
@@ -44,6 +54,7 @@ export default function ReceiptDetail() {
   const [editing, setEditing] = useState(false);
   const [editStore, setEditStore] = useState('');
   const [editDate, setEditDate] = useState('');
+  const [editCurrency, setEditCurrency] = useState('PLN');
   const [editItems, setEditItems] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -84,11 +95,13 @@ export default function ReceiptDetail() {
   function startEditing() {
     setEditStore(receipt.store || '');
     setEditDate(toDatetimeLocal(receipt.date));
+    setEditCurrency(receipt.currency || 'PLN');
     setEditItems(items.map((item, i) => ({
       _id: i,
       name: item.name,
       price: String(item.price),
       discount: String(item.discount || 0),
+      quantity: String(item.quantity ?? 1),
       category_group: item.categories?.category_groups?.name || 'Other',
       category: item.categories?.name || 'Uncategorized',
     })));
@@ -110,7 +123,10 @@ export default function ReceiptDetail() {
   }
 
   function addEditItem() {
-    setEditItems(prev => [...prev, { _id: Date.now(), name: '', price: '', discount: '0', category_group: 'Other', category: 'Uncategorized' }]);
+    setEditItems(prev => [...prev, {
+      _id: Date.now(), name: '', price: '', discount: '0', quantity: '1',
+      category_group: 'Other', category: 'Uncategorized',
+    }]);
   }
 
   function handleGroupChange(editId, newGroup) {
@@ -124,11 +140,19 @@ export default function ReceiptDetail() {
     setSaving(true);
     setError('');
     try {
-      const editTotal = editItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0), 0);
+      const editTotal = editItems.reduce(
+        (sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0),
+        0
+      );
 
       const { error: recErr } = await supabase
         .from('receipts')
-        .update({ store: editStore || null, date: editDate, total: parseFloat(editTotal.toFixed(2)) })
+        .update({
+          store: editStore || null,
+          date: editDate,
+          total: parseFloat(editTotal.toFixed(2)),
+          currency: editCurrency,
+        })
         .eq('id', receipt.id);
       if (recErr) throw recErr;
 
@@ -143,6 +167,7 @@ export default function ReceiptDetail() {
           raw_name: null,
           price: parseFloat(item.price) || 0,
           discount: parseFloat(item.discount) || 0,
+          quantity: parseFloat(item.quantity) || 1,
           category_id: categoryMap[item.category]?.id || null,
         }));
 
@@ -196,7 +221,17 @@ export default function ReceiptDetail() {
     );
   }
 
-  const editTotal = editItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0), 0);
+  const editTotal = editItems.reduce(
+    (sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0),
+    0
+  );
+
+  const receiptCurrency = receipt.currency || 'PLN';
+  const showConversion = receiptCurrency !== displayCurrency;
+  const totalNum = receipt.total != null ? Number(receipt.total) : null;
+  const convertedTotal = showConversion && totalNum != null
+    ? toDisplay(totalNum, receiptCurrency)
+    : null;
 
   return (
     <div className="page detail-page">
@@ -238,26 +273,58 @@ export default function ReceiptDetail() {
         <img src={receipt.image_url} alt="Receipt" className="detail-image" />
       )}
 
-      <div className="detail-meta">
-        {editing ? (
-          <input
-            type="datetime-local"
-            className="form-input"
-            value={editDate}
-            onChange={e => setEditDate(e.target.value)}
-            style={{ width: 'auto' }}
-          />
-        ) : (
+      {editing && (
+        <div className="form-row-2col" style={{ marginBottom: 12 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">{t('dateLabel')}</label>
+            <input
+              type="datetime-local"
+              className="form-input"
+              value={editDate}
+              onChange={e => setEditDate(e.target.value)}
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">{t('currencyLabel')}</label>
+            <select
+              className="form-select"
+              value={editCurrency}
+              onChange={e => setEditCurrency(e.target.value)}
+            >
+              {supportedCurrencies.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {!editing && (
+        <div className="detail-meta">
           <span className="text-muted">
             {formatReceiptDate(receipt.date)}
           </span>
-        )}
-        <span className="detail-total" style={{ fontFamily: 'var(--font-mono)' }}>
-          {editing
-            ? `${editTotal.toFixed(2)} PLN`
-            : receipt.total != null ? `${Number(receipt.total).toFixed(2)} PLN` : '—'}
-        </span>
-      </div>
+          <div style={{ textAlign: 'right' }}>
+            <span className="detail-total" style={{ fontFamily: 'var(--font-mono)' }}>
+              {totalNum != null ? `${totalNum.toFixed(2)} ${receiptCurrency}` : '—'}
+            </span>
+            {showConversion && convertedTotal != null && (
+              <div className="text-muted" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, marginTop: 2 }}>
+                ≈ {format(convertedTotal, displayCurrency)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="detail-meta">
+          <span className="text-muted">{t('totalLabel')}</span>
+          <span className="detail-total" style={{ fontFamily: 'var(--font-mono)' }}>
+            {editTotal.toFixed(2)} {editCurrency}
+          </span>
+        </div>
+      )}
 
       {editing ? (
         <div className="items-list">
@@ -269,6 +336,17 @@ export default function ReceiptDetail() {
                   value={item.name}
                   onChange={e => updateEditItem(item._id, 'name', e.target.value)}
                   placeholder={t('itemNamePlaceholder')}
+                />
+                <input
+                  type="number"
+                  className="form-input item-qty"
+                  value={item.quantity}
+                  onChange={e => updateEditItem(item._id, 'quantity', e.target.value)}
+                  placeholder={t('qtyPlaceholder')}
+                  step="0.001"
+                  min="0"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                  title={t('qtyShort')}
                 />
                 <input
                   type="number"
@@ -322,40 +400,45 @@ export default function ReceiptDetail() {
         </div>
       ) : (
         <div className="items-list">
-          {items.map(item => (
-            <div key={item.id} className="detail-item">
-              <div className="detail-item-left">
-                <span className="detail-item-name">{item.name}</span>
-                {item.categories && (
-                  <CategoryBadge
-                    name={item.categories.name}
-                    color={item.categories.category_groups?.color || '#71717a'}
-                  />
+          {items.map(item => {
+            const qtyLabel = formatQty(item.quantity);
+            return (
+              <div key={item.id} className="detail-item">
+                <div className="detail-item-left">
+                  <span className="detail-item-name">
+                    {qtyLabel}{item.name}
+                  </span>
+                  {item.categories && (
+                    <CategoryBadge
+                      name={item.categories.name}
+                      color={item.categories.category_groups?.color || '#71717a'}
+                    />
+                  )}
+                </div>
+                {item.discount > 0 ? (
+                  <span className="detail-item-price" style={{ fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '11px' }}>
+                      {item.price.toFixed(2)}
+                    </span>
+                    {' '}
+                    <span style={{ color: '#22c55e' }}>-{item.discount.toFixed(2)}</span>
+                    {' = '}
+                    {(item.price - item.discount).toFixed(2)} {receiptCurrency}
+                  </span>
+                ) : (
+                  <span
+                    className="detail-item-price"
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      color: item.price < 0 ? '#22c55e' : 'var(--text)',
+                    }}
+                  >
+                    {item.price < 0 ? '−' : ''}{Math.abs(item.price).toFixed(2)} {receiptCurrency}
+                  </span>
                 )}
               </div>
-              {item.discount > 0 ? (
-                <span className="detail-item-price" style={{ fontFamily: 'var(--font-mono)' }}>
-                  <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '11px' }}>
-                    {item.price.toFixed(2)}
-                  </span>
-                  {' '}
-                  <span style={{ color: '#22c55e' }}>-{item.discount.toFixed(2)}</span>
-                  {' = '}
-                  {(item.price - item.discount).toFixed(2)} PLN
-                </span>
-              ) : (
-                <span
-                  className="detail-item-price"
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    color: item.price < 0 ? '#22c55e' : 'var(--text)',
-                  }}
-                >
-                  {item.price < 0 ? '−' : ''}{Math.abs(item.price).toFixed(2)} PLN
-                </span>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

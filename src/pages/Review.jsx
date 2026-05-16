@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Trash2, Plus, X } from 'lucide-react';
+import { Trash2, Plus, X, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
+import { useCurrency } from '../hooks/useCurrency';
 import { supabase } from '../lib/supabase';
 import { fetchCategoryData } from '../lib/categories';
 
@@ -12,9 +13,19 @@ function toDatetimeLocal(val) {
   return val.slice(0, 16);
 }
 
+// True when `dateStr` (datetime-local string) is older than 7 days from now.
+function isMoreThanWeekOld(dateStr) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  return Date.now() - d.getTime() > weekMs;
+}
+
 export default function Review() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { displayCurrency, supportedCurrencies, toDisplay, format } = useCurrency();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -22,11 +33,15 @@ export default function Review() {
 
   const [store, setStore] = useState(state?.parsedData?.store || '');
   const [date, setDate] = useState(toDatetimeLocal(state?.parsedData?.date));
+  const [currency, setCurrency] = useState(
+    state?.parsedData?.currency || displayCurrency || 'PLN'
+  );
   const [items, setItems] = useState(
     (state?.parsedData?.items || []).map((item, i) => ({
       ...item,
       _id: i,
       discount: item.discount || 0,
+      quantity: item.quantity ?? 1,
       category_group: item.category_group || 'Other',
       category: item.category || 'Uncategorized',
     }))
@@ -37,6 +52,7 @@ export default function Review() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [dateHintOpen, setDateHintOpen] = useState(false);
 
   const imageUrl = state?.imageUrl;
 
@@ -52,9 +68,25 @@ export default function Review() {
     });
   }, []);
 
+  // If Gemini didn't return a currency and the display currency arrives later
+  // via the async settings load, sync the receipt currency to that default.
+  useEffect(() => {
+    if (!state?.parsedData?.currency && displayCurrency) {
+      setCurrency(c => (c === 'PLN' ? displayCurrency : c));
+    }
+  }, [displayCurrency]);
+
+  const dateIsOld = useMemo(() => isMoreThanWeekOld(date), [date]);
+
   if (!state) return null;
 
-  const total = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0), 0);
+  const total = items.reduce(
+    (sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0),
+    0
+  );
+
+  const showConversion = currency !== displayCurrency;
+  const convertedTotal = showConversion ? toDisplay(total, currency) : null;
 
   function updateItem(id, field, value) {
     setItems(prev => prev.map(item => item._id === id ? { ...item, [field]: value } : item));
@@ -66,7 +98,10 @@ export default function Review() {
 
   function addItem() {
     const newId = Date.now();
-    setItems(prev => [...prev, { _id: newId, name: '', price: '', discount: 0, category_group: 'Other', category: 'Uncategorized', raw_name: '' }]);
+    setItems(prev => [...prev, {
+      _id: newId, name: '', price: '', discount: 0, quantity: 1,
+      category_group: 'Other', category: 'Uncategorized', raw_name: '',
+    }]);
   }
 
   function handleGroupChange(id, newGroup) {
@@ -87,6 +122,7 @@ export default function Review() {
           store: store || null,
           date,
           total: parseFloat(total.toFixed(2)),
+          currency,
           image_url: imageUrl || null,
         })
         .select()
@@ -102,6 +138,7 @@ export default function Review() {
           raw_name: item.raw_name || null,
           price: parseFloat(item.price) || 0,
           discount: parseFloat(item.discount) || 0,
+          quantity: parseFloat(item.quantity) || 1,
           category_id: categoryMap[item.category]?.id || null,
         }));
 
@@ -152,15 +189,48 @@ export default function Review() {
         />
       </div>
 
-      <div className="form-group">
-        <label className="form-label">{t('dateLabel')}</label>
-        <input
-          type="datetime-local"
-          className="form-input"
-          value={date}
-          onChange={e => setDate(e.target.value)}
-        />
+      <div className="form-row-2col">
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label date-label-row">
+            <span>{t('dateLabel')}</span>
+            {dateIsOld && (
+              <button
+                type="button"
+                className="date-warning-btn"
+                onClick={() => setDateHintOpen(o => !o)}
+                title={t('oldDateWarning')}
+                aria-label={t('oldDateWarning')}
+              >
+                <AlertTriangle size={14} />
+              </button>
+            )}
+          </label>
+          <input
+            type="datetime-local"
+            className="form-input"
+            value={date}
+            onChange={e => { setDate(e.target.value); setDateHintOpen(false); }}
+          />
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">{t('currencyLabel')}</label>
+          <select
+            className="form-select"
+            value={currency}
+            onChange={e => setCurrency(e.target.value)}
+          >
+            {supportedCurrencies.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {dateIsOld && dateHintOpen && (
+        <span className="hint-bubble" style={{ marginTop: 6 }}>
+          {t('oldDateWarning')}
+        </span>
+      )}
 
       <div className="items-section">
         <h3 className="section-title">{t('itemsLabel')}</h3>
@@ -173,6 +243,17 @@ export default function Review() {
                 value={item.name}
                 onChange={e => updateItem(item._id, 'name', e.target.value)}
                 placeholder={t('itemNamePlaceholder')}
+              />
+              <input
+                type="number"
+                className="form-input item-qty"
+                value={item.quantity}
+                onChange={e => updateItem(item._id, 'quantity', e.target.value)}
+                placeholder={t('qtyPlaceholder')}
+                step="0.001"
+                min="0"
+                style={{ fontFamily: 'var(--font-mono)' }}
+                title={t('qtyShort')}
               />
               <input
                 type="number"
@@ -233,9 +314,14 @@ export default function Review() {
       <div className="total-row">
         <span>{t('totalLabel')}</span>
         <span className="total-amount" style={{ fontFamily: 'var(--font-mono)' }}>
-          {total.toFixed(2)} PLN
+          {total.toFixed(2)} {currency}
         </span>
       </div>
+      {showConversion && convertedTotal != null && (
+        <div className="total-converted text-muted" style={{ fontFamily: 'var(--font-mono)' }}>
+          ≈ {format(convertedTotal, displayCurrency)}
+        </div>
+      )}
 
       {error && <p className="error-msg">{error}</p>}
 

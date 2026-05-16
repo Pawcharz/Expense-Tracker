@@ -39,6 +39,7 @@ create table public.receipts (
   store       text,
   date        date not null default current_date,
   total       numeric(10,2),
+  currency    text not null default 'PLN',  -- ISO 4217 currency the receipt was paid in
   image_url   text,
   created_at  timestamptz default now()
 );
@@ -49,8 +50,9 @@ create table public.items (
   receipt_id  uuid references public.receipts(id) on delete cascade not null,
   name        text not null,
   raw_name    text,         -- original text from receipt exactly as printed
-  price       numeric(10,2) not null,
+  price       numeric(10,2) not null,         -- line total (price * quantity, before discount)
   discount    numeric(10,2) not null default 0,
+  quantity    numeric(10,3) not null default 1,
   category_id integer references public.categories(id),
   created_at  timestamptz default now()
 );
@@ -106,8 +108,9 @@ grant all on public.budgets to authenticated;
 
 -- User settings (language preference etc.)
 create table public.user_settings (
-  user_id  uuid primary key references auth.users(id) on delete cascade,
-  language text not null default 'en'
+  user_id          uuid primary key references auth.users(id) on delete cascade,
+  language         text not null default 'en',
+  display_currency text not null default 'PLN'  -- ISO 4217 code used for UI conversions
 );
 alter table public.user_settings enable row level security;
 create policy "Users manage own settings"
