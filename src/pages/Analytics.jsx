@@ -122,13 +122,14 @@ export default function Analytics() {
 
     const { data: items } = await supabase
       .from('items')
-      .select('price, receipt_id, categories(name, category_groups(name, color))')
+      .select('price, quantity, discount, receipt_id, categories(name, category_groups(name, color))')
       .in('receipt_id', ids)
       .gt('price', 0);
 
-    // Attach currency to each item so aggregation can convert per-row.
+    // Attach currency and compute net line amount (price × qty − discount).
     const enriched = (items || []).map(item => ({
       ...item,
+      netPrice: (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1) - (parseFloat(item.discount) || 0),
       currency: currencyByReceipt[item.receipt_id] || 'PLN',
     }));
     setRawItems(enriched);
@@ -217,7 +218,7 @@ export default function Analytics() {
 
     const { data: items } = await supabase
       .from('items')
-      .select('name, price, receipt_id, quantity')
+      .select('name, price, quantity, discount, receipt_id')
       .in('receipt_id', ids)
       .gt('price', 0);
 
@@ -231,7 +232,8 @@ export default function Analytics() {
       const qty = parseFloat(item.quantity) || 1;
       map[key].count += qty >= 1 ? Math.round(qty) : 1;
       const cur = currencyByReceipt[item.receipt_id] || 'PLN';
-      map[key].total += (parseFloat(item.price) || 0) * rateTo(cur, displayCurrency);
+      const lineAmt = (parseFloat(item.price) || 0) * qty - (parseFloat(item.discount) || 0);
+      map[key].total += Math.max(0, lineAmt) * rateTo(cur, displayCurrency);
     });
 
     const sorted = Object.values(map)
@@ -243,7 +245,7 @@ export default function Analytics() {
   }
 
   const categoryData = (() => {
-    const toDisp = (item) => (parseFloat(item.price) || 0) * rateTo(item.currency || 'PLN', displayCurrency);
+    const toDisp = (item) => Math.max(0, item.netPrice ?? (parseFloat(item.price) || 0)) * rateTo(item.currency || 'PLN', displayCurrency);
     if (expandedGroup) {
       const filtered = rawItems.filter(i => i.categories?.category_groups?.name === expandedGroup);
       const map = {};

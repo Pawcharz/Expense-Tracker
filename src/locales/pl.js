@@ -43,6 +43,8 @@ export default {
   itemNamePlaceholder: 'Nazwa pozycji',
   qtyPlaceholder: 'ilość',
   qtyShort: 'Ilość',
+  priceShort: 'Cena jedn.',
+  discShort: 'Rabat',
   addItem: 'Dodaj pozycję',
   totalLabel: 'Suma',
   saveReceipt: 'Zapisz paragon',

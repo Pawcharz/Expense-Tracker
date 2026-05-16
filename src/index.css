@@ -592,6 +592,32 @@ main, .page {
   padding-right: 4px;
 }
 
+/* Column header row above item rows */
+.item-col-headers {
+  display: grid;
+  grid-template-columns: 1fr 50px 80px 60px;
+  gap: 6px;
+  padding: 0 42px 4px 0; /* 42px right = 36px trash btn + 6px gap */
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+/* Qty × unit price secondary line in view mode */
+.detail-item-price-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.detail-item-qty-line {
+  font-size: 11px;
+}
+
 /* Two-column form row used for Date + Currency side-by-side */
 .form-row-2col {
   display: grid;

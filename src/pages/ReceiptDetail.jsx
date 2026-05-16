@@ -141,7 +141,10 @@ export default function ReceiptDetail() {
     setError('');
     try {
       const editTotal = editItems.reduce(
-        (sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0),
+        (sum, item) =>
+          sum +
+          (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1) -
+          (parseFloat(item.discount) || 0),
         0
       );
 
@@ -222,7 +225,10 @@ export default function ReceiptDetail() {
   }
 
   const editTotal = editItems.reduce(
-    (sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0),
+    (sum, item) =>
+      sum +
+      (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1) -
+      (parseFloat(item.discount) || 0),
     0
   );
 
@@ -328,6 +334,12 @@ export default function ReceiptDetail() {
 
       {editing ? (
         <div className="items-list">
+          <div className="item-col-headers">
+            <span>{t('itemNamePlaceholder')}</span>
+            <span>{t('qtyShort')}</span>
+            <span>{t('priceShort')}</span>
+            <span>{t('discShort')}</span>
+          </div>
           {editItems.map(item => (
             <div key={item._id} className="item-row">
               <div className="item-row-top">
@@ -401,13 +413,15 @@ export default function ReceiptDetail() {
       ) : (
         <div className="items-list">
           {items.map(item => {
-            const qtyLabel = formatQty(item.quantity);
+            const qty = parseFloat(item.quantity) || 1;
+            const unitPrice = parseFloat(item.price) || 0;
+            const lineTotal = unitPrice * qty;
+            const net = lineTotal - (parseFloat(item.discount) || 0);
+            const multiUnit = qty !== 1;
             return (
               <div key={item.id} className="detail-item">
                 <div className="detail-item-left">
-                  <span className="detail-item-name">
-                    {qtyLabel}{item.name}
-                  </span>
+                  <span className="detail-item-name">{item.name}</span>
                   {item.categories && (
                     <CategoryBadge
                       name={item.categories.name}
@@ -415,27 +429,31 @@ export default function ReceiptDetail() {
                     />
                   )}
                 </div>
-                {item.discount > 0 ? (
-                  <span className="detail-item-price" style={{ fontFamily: 'var(--font-mono)' }}>
-                    <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '11px' }}>
-                      {item.price.toFixed(2)}
+                <div className="detail-item-price-col" style={{ fontFamily: 'var(--font-mono)', textAlign: 'right' }}>
+                  {multiUnit && (
+                    <span className="detail-item-qty-line text-muted">
+                      {qty % 1 === 0 ? qty : qty.toFixed(3).replace(/\.?0+$/, '')} × {unitPrice.toFixed(2)}
                     </span>
-                    {' '}
-                    <span style={{ color: '#22c55e' }}>-{item.discount.toFixed(2)}</span>
-                    {' = '}
-                    {(item.price - item.discount).toFixed(2)} {receiptCurrency}
-                  </span>
-                ) : (
-                  <span
-                    className="detail-item-price"
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      color: item.price < 0 ? '#22c55e' : 'var(--text)',
-                    }}
-                  >
-                    {item.price < 0 ? '−' : ''}{Math.abs(item.price).toFixed(2)} {receiptCurrency}
-                  </span>
-                )}
+                  )}
+                  {item.discount > 0 ? (
+                    <span className="detail-item-price">
+                      <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '11px' }}>
+                        {lineTotal.toFixed(2)}
+                      </span>
+                      {' '}
+                      <span style={{ color: '#22c55e' }}>-{item.discount.toFixed(2)}</span>
+                      {' = '}
+                      {net.toFixed(2)} {receiptCurrency}
+                    </span>
+                  ) : (
+                    <span
+                      className="detail-item-price"
+                      style={{ color: net < 0 ? '#22c55e' : 'var(--text)' }}
+                    >
+                      {net < 0 ? '−' : ''}{Math.abs(net).toFixed(2)} {receiptCurrency}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}

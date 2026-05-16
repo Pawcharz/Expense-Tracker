@@ -71,8 +71,8 @@ Rules:
 - raw_name: original text from the receipt exactly as printed (this MAY include quantity markers like "x2", "2x", "2 szt", "0.5 kg")
 - name: human-readable name in ${nameLang} — MUST NOT contain quantity markers like "x2", "2x", "×3", "(2)", "2 szt", "2 pcs". Strip them out and put the count into the quantity field instead. e.g. raw_name "Coca-Cola x2" → name "Coca-Cola", quantity 2.
 - quantity: the number of units of this line item (default 1). Use the number printed on the receipt next to the item (e.g. "2 x 3.99" → quantity 2). For weight-based items use the printed weight (e.g. "0.456 kg" → quantity 0.456). If no quantity is shown, use 1.
-- price: the LINE TOTAL for this item — i.e. the amount that contributes to the receipt total BEFORE per-line discount. For "2 x 3.99 = 7.98" the price is 7.98, not 3.99. Always a positive number.
-- discount: the discount applied to this line (positive number, default 0). If the receipt shows a discount line directly tied to an item, set that item's discount to the discount amount (positive) rather than creating a separate negative-price item. If a general discount appears that cannot be attributed to a specific item, create a separate item named "Store Discount" (or translated equivalent) with price=0, quantity=1, discount=<amount>.
+- price: the UNIT PRICE of this item — i.e. the price of a single unit BEFORE discount. For "2 x 3.99 = 7.98" the price is 3.99, quantity is 2. Always a positive number.
+- discount: the TOTAL discount applied to this line across all units (positive number, default 0). If the receipt shows a discount line directly tied to an item, set that item's discount to the discount amount (positive) rather than creating a separate negative-price item. If a general discount appears that cannot be attributed to a specific item, create a separate item named "Store Discount" (or translated equivalent) with price=0, quantity=1, discount=<amount>.
 - Items must NEVER have a negative price. Use the discount field instead.
 - category_group: pick EXACTLY one from this list: ${groups}
 - category: pick EXACTLY one from this list that fits within the chosen group: ${categories}

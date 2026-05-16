@@ -43,6 +43,8 @@ export default {
   itemNamePlaceholder: 'Item name',
   qtyPlaceholder: 'qty',
   qtyShort: 'Qty',
+  priceShort: 'Unit price',
+  discShort: 'Discount',
   addItem: 'Add item',
   totalLabel: 'Total',
   saveReceipt: 'Save receipt',

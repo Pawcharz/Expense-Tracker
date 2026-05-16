@@ -81,7 +81,10 @@ export default function Review() {
   if (!state) return null;
 
   const total = items.reduce(
-    (sum, item) => sum + (parseFloat(item.price) || 0) - (parseFloat(item.discount) || 0),
+    (sum, item) =>
+      sum +
+      (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1) -
+      (parseFloat(item.discount) || 0),
     0
   );
 
@@ -234,6 +237,12 @@ export default function Review() {
 
       <div className="items-section">
         <h3 className="section-title">{t('itemsLabel')}</h3>
+        <div className="item-col-headers">
+          <span>{t('itemNamePlaceholder')}</span>
+          <span>{t('qtyShort')}</span>
+          <span>{t('priceShort')}</span>
+          <span>{t('discShort')}</span>
+        </div>
         {items.map(item => (
           <div key={item._id} className="item-row">
             <div className="item-row-top">
