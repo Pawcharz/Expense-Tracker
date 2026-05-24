@@ -36,6 +36,11 @@ const RESPONSE_SCHEMA = {
   type: 'object',
   properties: {
     store: { type: 'string', nullable: true },
+    // date_on_receipt gates the date field: Gemini's structured-output mode
+    // often fabricates a string for nullable fields instead of returning null.
+    // Using an explicit boolean forces a deliberate decision, so we can safely
+    // discard the date value whenever date_on_receipt is false.
+    date_on_receipt: { type: 'boolean' },
     date: { type: 'string', nullable: true },
     total: { type: 'number', nullable: true },
     currency: { type: 'string', nullable: true },
@@ -56,7 +61,7 @@ const RESPONSE_SCHEMA = {
       },
     },
   },
-  required: ['items'],
+  required: ['items', 'date_on_receipt'],
 };
 
 function buildParsePrompt(language) {
@@ -79,7 +84,8 @@ Rules:
 - Items must NEVER have a negative price. Use the discount field instead.
 - category_group: pick EXACTLY one from this list: ${groups}
 - category: pick EXACTLY one from this list that fits within the chosen group: ${categories}
-- date: If a date is clearly visible on the receipt, output it as YYYY-MM-DDTHH:MM (ISO datetime, 24h); include time if visible, otherwise use T00:00. Always YYYY-MM-DD with year first — never swap day and month when year leads. If NO date is visible on the receipt, return null — do NOT guess, infer, or fabricate a date.
+- date_on_receipt: true if a date is clearly printed on the receipt, false if not. Be strict — only true when you can actually read a date on the receipt.
+- date: ONLY filled when date_on_receipt is true. Output as YYYY-MM-DDTHH:MM (ISO datetime, 24h); include time if visible, otherwise use T00:00. Always YYYY-MM-DD with year first — never swap day and month when year leads. If date_on_receipt is false, set this to null.
 - total: final amount paid after discounts
 - currency: the ISO 4217 currency code of the receipt (e.g. "PLN", "EUR", "USD", "GBP", "CZK"). Detect it from explicit codes, currency symbols (zł, €, $, £, Kč), or country/store context. If you genuinely cannot tell, return null.
 
@@ -161,6 +167,12 @@ async function mergeOcrTexts(texts, apiKey) {
   );
 }
 
+// Normalize parsed Gemini response: discard the date when date_on_receipt is false.
+function normalizeReceiptData(data) {
+  if (!data.date_on_receipt) data.date = null;
+  return data;
+}
+
 // Stage 3: Parse merged text → structured JSON
 async function parseReceiptText(text, language, apiKey, numChunks = 1) {
   const result = await geminiCall(
@@ -173,7 +185,7 @@ async function parseReceiptText(text, language, apiKey, numChunks = 1) {
       responseSchema: RESPONSE_SCHEMA,
     }
   );
-  return JSON.parse(result);
+  return normalizeReceiptData(JSON.parse(result));
 }
 
 // Single-image path: image → structured JSON directly (most efficient for normal receipts)
@@ -191,7 +203,7 @@ async function parseReceiptImageDirect(base64, mimeType, language, apiKey) {
       responseSchema: RESPONSE_SCHEMA,
     }
   );
-  return JSON.parse(result);
+  return normalizeReceiptData(JSON.parse(result));
 }
 
 // Main entry point called by Scan.jsx
