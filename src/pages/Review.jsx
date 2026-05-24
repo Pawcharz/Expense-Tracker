@@ -32,6 +32,7 @@ export default function Review() {
   const state = location.state;
 
   const [store, setStore] = useState(state?.parsedData?.store || '');
+  const [dateInferred, setDateInferred] = useState(!state?.parsedData?.date);
   const [date, setDate] = useState(toDatetimeLocal(state?.parsedData?.date));
   const [currency, setCurrency] = useState(
     state?.parsedData?.currency || displayCurrency || 'PLN'
@@ -212,8 +213,13 @@ export default function Review() {
             type="datetime-local"
             className="form-input"
             value={date}
-            onChange={e => { setDate(e.target.value); setDateHintOpen(false); }}
+            onChange={e => { setDate(e.target.value); setDateHintOpen(false); setDateInferred(false); }}
           />
+          {dateInferred && (
+            <span className="hint-text text-muted" style={{ fontSize: '0.75rem', marginTop: 2 }}>
+              {t('dateAutoSet')}
+            </span>
+          )}
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">{t('currencyLabel')}</label>

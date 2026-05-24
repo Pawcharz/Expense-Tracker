@@ -52,6 +52,7 @@ export default {
   discard: 'Discard',
   failedToSave: 'Failed to save receipt',
   oldDateWarning: 'The detected date is more than a week old. Double-check it matches the receipt.',
+  dateAutoSet: 'No date found on receipt — set to now. Adjust if needed.',
   convertedFromHint: 'Converted from',
 
   // History

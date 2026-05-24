@@ -52,6 +52,7 @@ export default {
   discard: 'Odrzuć',
   failedToSave: 'Nie udało się zapisać paragonu',
   oldDateWarning: 'Wykryta data jest starsza niż tydzień. Sprawdź, czy zgadza się z paragonem.',
+  dateAutoSet: 'Brak daty na paragonie — ustawiono na teraz. Zmień jeśli trzeba.',
   convertedFromHint: 'Przeliczono z',
 
   // History
