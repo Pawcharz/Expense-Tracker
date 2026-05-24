@@ -63,20 +63,23 @@ function buildParsePrompt(language) {
   const nameLang = language === 'pl' ? 'Polish' : 'English';
   const groups = GROUP_NAMES.join(', ');
   const categories = CATEGORY_NAMES.join(', ');
-  return `You are a receipt parser. Extract all purchased line items from the receipt. The receipt may be in any language.
+  return `You are a receipt parser. Extract all purchased line items from the receipt.
+
+OUTPUT LANGUAGE: ${nameLang}. The receipt may be printed in any language. All human-readable text fields in your response (store, name) MUST be in ${nameLang} — translate from the receipt language if necessary.
 
 Rules:
 - Every item must appear
 - Do not invent items not on the receipt
 - raw_name: original text from the receipt exactly as printed (this MAY include quantity markers like "x2", "2x", "2 szt", "0.5 kg")
-- name: human-readable name in ${nameLang} — MUST NOT contain quantity markers like "x2", "2x", "×3", "(2)", "2 szt", "2 pcs". Strip them out and put the count into the quantity field instead. e.g. raw_name "Coca-Cola x2" → name "Coca-Cola", quantity 2.
+- name: human-readable name in ${nameLang} — translate from the receipt language if needed. MUST NOT contain quantity markers like "x2", "2x", "×3", "(2)", "2 szt", "2 pcs". Strip them out and put the count into the quantity field instead. e.g. raw_name "Coca-Cola x2" → name "Coca-Cola", quantity 2.
+- store: the merchant/store name translated to ${nameLang} if it is a common word or phrase (e.g. "Piekarnia Kowalski" → "Kowalski Bakery" in English). Proper nouns and brand names that have no translation should be kept as-is.
 - quantity: the number of units of this line item (default 1). Use the number printed on the receipt next to the item (e.g. "2 x 3.99" → quantity 2). For weight-based items use the printed weight (e.g. "0.456 kg" → quantity 0.456). If no quantity is shown, use 1.
 - price: the UNIT PRICE of this item — i.e. the price of a single unit BEFORE discount. For "2 x 3.99 = 7.98" the price is 3.99, quantity is 2. Always a positive number.
 - discount: the TOTAL discount applied to this line across all units (positive number, default 0). If the receipt shows a discount line directly tied to an item, set that item's discount to the discount amount (positive) rather than creating a separate negative-price item. If a general discount appears that cannot be attributed to a specific item, create a separate item named "Store Discount" (or translated equivalent) with price=0, quantity=1, discount=<amount>.
 - Items must NEVER have a negative price. Use the discount field instead.
 - category_group: pick EXACTLY one from this list: ${groups}
 - category: pick EXACTLY one from this list that fits within the chosen group: ${categories}
-- date: output as YYYY-MM-DDTHH:MM (ISO datetime, 24h). If a time is visible on the receipt, include it. If no time is visible, use YYYY-MM-DDT00:00. Always output YYYY-MM-DD with year first — never swap day and month when year leads.
+- date: If a date is clearly visible on the receipt, output it as YYYY-MM-DDTHH:MM (ISO datetime, 24h); include time if visible, otherwise use T00:00. Always YYYY-MM-DD with year first — never swap day and month when year leads. If NO date is visible on the receipt, return null — do NOT guess, infer, or fabricate a date.
 - total: final amount paid after discounts
 - currency: the ISO 4217 currency code of the receipt (e.g. "PLN", "EUR", "USD", "GBP", "CZK"). Detect it from explicit codes, currency symbols (zł, €, $, £, Kč), or country/store context. If you genuinely cannot tell, return null.
 
