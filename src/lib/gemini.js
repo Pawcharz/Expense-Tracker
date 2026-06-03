@@ -16,7 +16,7 @@ const CATEGORY_NAMES = [
   'Restaurant','Fast Food','Café','Delivery','Bar',
   'Cleaning Products','Kitchen Supplies','Furniture','Home Decor','Garden & Plants',
   'Tools & Hardware','Storage',
-  'Personal Care','Cosmetics & Skincare','Haircare','Pharmacy & Supplements',
+  'Personal Care','Cosmetics & Skincare','Haircare',
   'Doctor / Clinic','Dentist','Pharmacy','Lab & Tests','Gym & Fitness','Sport Equipment',
   'Everyday Clothing','Shoes','Outerwear','Accessories','Formal Wear','Sportswear','Underwear & Socks',
   'Fuel','Public Transport','Taxi / Rideshare','Car Maintenance','Parking','Tolls','Flights',
@@ -92,7 +92,9 @@ Rules:
 DELIVERY APP RULE (important):
 If the receipt is from a food/grocery delivery app (Glovo, Uber Eats, Wolt, Bolt Food, DoorDash, Deliveroo, or similar), apply the following distinction:
 - If the order is from a RESTAURANT or food outlet (prepared meals, burgers, pizza, sushi, sandwiches, etc.): set category_group="Dining & Takeout" and category="Delivery" for EVERY item.
-- If the order is GROCERY DELIVERY from a supermarket or shop (raw/packaged products, branded goods, produce — from stores like Biedronka, Lidl, Kaufland, Tesco, Carrefour, etc.): categorize each item individually as you would a regular grocery receipt.`;
+- If the order is GROCERY DELIVERY from a supermarket or shop (raw/packaged products, branded goods, produce — from stores like Biedronka, Lidl, Kaufland, Tesco, Carrefour, etc.): categorize each item individually as you would a regular grocery receipt.
+
+PHARMACY RULE: Any purchase from a pharmacy or drugstore (medicines, supplements, vitamins, OTC drugs, medical equipment) always goes under Health & Medical > Pharmacy. Never assign pharmacy items to Hygiene & Beauty.`;
 }
 
 const OCR_PROMPT =

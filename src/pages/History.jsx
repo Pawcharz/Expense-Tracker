@@ -49,7 +49,7 @@ export default function History() {
         .select('*, items(count)')
         .eq('user_id', user.id)
         .ilike('store', `%${query}%`)
-        .order('created_at', { ascending: false })
+        .order('date', { ascending: false })
         .limit(50),
       supabase
         .from('items')
@@ -69,7 +69,7 @@ export default function History() {
         .select('*, items(count)')
         .eq('user_id', user.id)
         .in('id', itemReceiptIds)
-        .order('created_at', { ascending: false })
+        .order('date', { ascending: false })
         .limit(50);
       itemReceipts = data || [];
     }
@@ -86,10 +86,10 @@ export default function History() {
 
   async function loadReceipts(pageNum = 0, reset = false) {
     setLoading(true);
-    const from = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const from = new Date(year, month, 1).toISOString();
     const toMonth = month === 11 ? 0 : month + 1;
     const toYear = month === 11 ? year + 1 : year;
-    const to = `${toYear}-${String(toMonth + 1).padStart(2, '0')}-01`;
+    const to = new Date(toYear, toMonth, 1).toISOString();
 
     const { data, error } = await supabase
       .from('receipts')
@@ -97,7 +97,7 @@ export default function History() {
       .eq('user_id', user.id)
       .gte('date', from)
       .lt('date', to)
-      .order('created_at', { ascending: false })
+      .order('date', { ascending: false })
       .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
     setLoading(false);

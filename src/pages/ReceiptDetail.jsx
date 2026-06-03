@@ -24,9 +24,14 @@ function formatReceiptDate(val) {
 }
 
 function toDatetimeLocal(val) {
-  if (!val) return new Date().toISOString().slice(0, 16);
-  if (val.length === 10) return val + 'T00:00';
-  return val.slice(0, 16);
+  if (!val) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+  const d = new Date(val.length === 10 ? val + 'T00:00' : val);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // Quantity display helper — hides "× 1" for the common case.
@@ -152,7 +157,7 @@ export default function ReceiptDetail() {
         .from('receipts')
         .update({
           store: editStore || null,
-          date: editDate,
+          date: new Date(editDate).toISOString(),
           total: parseFloat(editTotal.toFixed(2)),
           currency: editCurrency,
         })

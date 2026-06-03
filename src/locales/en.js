@@ -109,7 +109,7 @@ export default {
     'Kitchen Supplies': 'Kitchen Supplies', 'Furniture': 'Furniture', 'Home Decor': 'Home Decor',
     'Garden & Plants': 'Garden & Plants', 'Tools & Hardware': 'Tools & Hardware', 'Storage': 'Storage',
     'Personal Care': 'Personal Care', 'Cosmetics & Skincare': 'Cosmetics & Skincare',
-    'Haircare': 'Haircare', 'Pharmacy & Supplements': 'Pharmacy & Supplements',
+    'Haircare': 'Haircare',
     'Doctor / Clinic': 'Doctor / Clinic', 'Dentist': 'Dentist', 'Pharmacy': 'Pharmacy',
     'Lab & Tests': 'Lab & Tests', 'Gym & Fitness': 'Gym & Fitness', 'Sport Equipment': 'Sport Equipment',
     'Everyday Clothing': 'Everyday Clothing', 'Shoes': 'Shoes', 'Outerwear': 'Outerwear',

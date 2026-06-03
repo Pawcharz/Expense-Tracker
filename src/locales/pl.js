@@ -110,7 +110,7 @@ export default {
     'Furniture': 'Meble', 'Home Decor': 'Dekoracje', 'Garden & Plants': 'Ogród i rośliny',
     'Tools & Hardware': 'Narzędzia', 'Storage': 'Przechowywanie',
     'Personal Care': 'Higiena osobista', 'Cosmetics & Skincare': 'Kosmetyki i pielęgnacja',
-    'Haircare': 'Pielęgnacja włosów', 'Pharmacy & Supplements': 'Apteka i suplementy',
+    'Haircare': 'Pielęgnacja włosów',
     'Doctor / Clinic': 'Lekarz / Klinika', 'Dentist': 'Dentysta', 'Pharmacy': 'Apteka',
     'Lab & Tests': 'Badania laboratoryjne', 'Gym & Fitness': 'Siłownia i fitness',
     'Sport Equipment': 'Sprzęt sportowy', 'Everyday Clothing': 'Odzież codzienna',

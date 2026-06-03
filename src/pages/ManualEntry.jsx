@@ -14,7 +14,11 @@ export default function ManualEntry() {
   const navigate = useNavigate();
 
   const [store, setStore] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
+  const [date, setDate] = useState(() => {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  });
   const [currency, setCurrency] = useState(displayCurrency || 'PLN');
   const [items, setItems] = useState([{
     _id: 0, name: '', price: '', discount: 0, quantity: 1,
@@ -81,7 +85,7 @@ export default function ManualEntry() {
         .insert({
           user_id: user.id,
           store: store || null,
-          date,
+          date: new Date(date).toISOString(),
           total: parseFloat(total.toFixed(2)),
           currency,
           image_url: null,

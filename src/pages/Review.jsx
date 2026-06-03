@@ -8,9 +8,14 @@ import { supabase } from '../lib/supabase';
 import { fetchCategoryData } from '../lib/categories';
 
 function toDatetimeLocal(val) {
-  if (!val) return new Date().toISOString().slice(0, 16);
-  if (val.length === 10) return val + 'T00:00';
-  return val.slice(0, 16);
+  if (!val) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+  const d = new Date(val.length === 10 ? val + 'T00:00' : val);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // True when `dateStr` (datetime-local string) is older than 7 days from now.
@@ -124,7 +129,7 @@ export default function Review() {
         .insert({
           user_id: user.id,
           store: store || null,
-          date,
+          date: new Date(date).toISOString(),
           total: parseFloat(total.toFixed(2)),
           currency,
           image_url: imageUrl || null,

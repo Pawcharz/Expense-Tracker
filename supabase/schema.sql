@@ -37,7 +37,7 @@ create table public.receipts (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid references auth.users(id) on delete cascade not null,
   store       text,
-  date        date not null default current_date,
+  date        timestamptz not null default now(),
   total       numeric(10,2),
   currency    text not null default 'PLN',  -- ISO 4217 currency the receipt was paid in
   image_url   text,
