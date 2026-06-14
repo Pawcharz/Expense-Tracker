@@ -429,7 +429,7 @@ export default function Analytics() {
                 <div className="budget-totals-row">
                   <span>{t('totalSpent')}</span>
                   <span style={{ fontFamily: 'var(--font-mono)' }}>
-                    {budgetProgressItems.reduce((s, b) => s + b.spent, 0).toFixed(2)}
+                    {categoryData.reduce((s, c) => s + c.total, 0).toFixed(2)}
                     {' / '}
                     {budgetProgressItems.reduce((s, b) => s + b.amount, 0).toFixed(2)} {displayCurrency}
                   </span>
