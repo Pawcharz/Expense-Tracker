@@ -38,6 +38,7 @@ export default function Analytics() {
   const [dailyItems, setDailyItems] = useState([]);
   const [dailyGroups, setDailyGroups] = useState([]);       // selected group names; empty = total
   const [smoothWindow, setSmoothWindow] = useState(7);      // trailing moving-average window in days
+  const [dailyKinds, setDailyKinds] = useState(['normal']);  // which expense kinds feed the chart
   const [trendData, setTrendData] = useState([]);
   const [topStores, setTopStores] = useState([]);
   const [topItems, setTopItems] = useState([]);
@@ -114,6 +115,7 @@ export default function Analytics() {
       return {
         date: r?.date,
         currency: r?.currency || 'PLN',
+        kind: normalizeKind(r?.kind),
         group: item.categories?.category_groups?.name || 'Other',
         color: item.categories?.category_groups?.color || '#71717a',
         netPrice: (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1) - (parseFloat(item.discount) || 0),
@@ -508,7 +510,7 @@ export default function Analytics() {
     const groupColor = {};
     const groupTotal = {};
     dailyItems.forEach(item => {
-      if (!item.date) return;
+      if (!item.date || !dailyKinds.includes(item.kind)) return;
       const idx = dayIndex[dayKey(new Date(item.date))];
       if (idx == null) return;
       const amt = Math.max(0, item.netPrice) * rateTo(item.currency, displayCurrency);
@@ -541,7 +543,11 @@ export default function Analytics() {
     });
     const rawTotal = series.reduce((s, sr) => s + sr.values.reduce((a, b) => a + b, 0), 0);
     return { data, series, availableGroups, rawTotal };
-  }, [dailyItems, dailyGroups, smoothWindow, displayCurrency, ratesReady]);
+  }, [dailyItems, dailyGroups, dailyKinds, smoothWindow, displayCurrency, ratesReady]);
+
+  function toggleDailyKind(k) {
+    setDailyKinds(prev => prev.includes(k) ? (prev.length > 1 ? prev.filter(x => x !== k) : prev) : [...prev, k]);
+  }
 
   function toggleDailyGroup(name) {
     setDailyGroups(prev => prev.includes(name) ? prev.filter(g => g !== name) : [...prev, name]);
@@ -617,12 +623,32 @@ export default function Analytics() {
 
   return (
     <div className="analytics-page page">
-      <div className="analytics-layout">
-      <div className="analytics-main">
-      <div className="month-selector">
-        <button className="btn-icon" onClick={prevMonth}><ChevronLeft size={20} /></button>
-        <span className="month-label">{monthNames[month]} {year}</span>
-        <button className="btn-icon" onClick={nextMonth}><ChevronRight size={20} /></button>
+      <div className="dash-header">
+        <div className="month-selector">
+          <button className="btn-icon" onClick={prevMonth}><ChevronLeft size={20} /></button>
+          <span className="month-label">{monthNames[month]} {year}</span>
+          <button className="btn-icon" onClick={nextMonth}><ChevronRight size={20} /></button>
+        </div>
+        {!loading && (
+          <div className="summary-strip">
+            {[
+              { key: 'normal', label: t('kindLabels').normal, value: kindTotals.normal, color: KIND_COLORS.normal },
+              { key: 'unusual', label: t('kindLabels').unusual, value: kindTotals.unusual, color: KIND_COLORS.unusual },
+              { key: 'mandatory', label: t('kindLabels').mandatory, value: kindTotals.mandatory, color: KIND_COLORS.mandatory },
+              { key: 'total', label: t('grandTotal'), value: kindTotals.normal + kindTotals.unusual + kindTotals.mandatory, color: null },
+            ].map(tile => (
+              <div key={tile.key} className={`summary-tile${tile.color ? '' : ' summary-tile-total'}`}>
+                <span className="summary-tile-label text-muted">
+                  {tile.color && <span className="cat-dot" style={{ background: tile.color }} />}
+                  {tile.label}
+                </span>
+                <span className="summary-tile-value" style={{ fontFamily: 'var(--font-mono)' }}>
+                  {tile.value.toFixed(2)} <span className="summary-tile-cur">{displayCurrency}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -632,8 +658,8 @@ export default function Analytics() {
           ))}
         </div>
       ) : (
-        <>
-          <section className="analytics-section">
+        <div className="dash-grid">
+          <section className="analytics-section dash-category">
             <h3 className="section-title">{t('spendingByCategory')}</h3>
             <div className="chip-row" style={{ marginBottom: 10 }}>
               {['all', ...KINDS].map(k => (
@@ -693,7 +719,7 @@ export default function Analytics() {
             )}
           </section>
 
-          <section className="analytics-section">
+          <section className="analytics-section dash-budgets">
             <div className="section-header-row">
               <div>
                 <h3 className="section-title">{t('budgetsTitle')}</h3>
@@ -782,7 +808,7 @@ export default function Analytics() {
 
 
           {/* ── Unusual / irregular purchases ── */}
-          <section className="analytics-section kind-section" style={{ borderColor: KIND_COLORS.unusual + '55' }}>
+          <section className="analytics-section kind-section dash-unusual" style={{ borderColor: KIND_COLORS.unusual + '55' }}>
             <div className="section-header-row">
               <div>
                 <h3 className="section-title">{t('unusualTitle')}</h3>
@@ -840,7 +866,7 @@ export default function Analytics() {
           </section>
 
           {/* ── Unusual: running average vs yearly budget ── */}
-          <section className="analytics-section kind-section" style={{ borderColor: KIND_COLORS.unusual + '55' }}>
+          <section className="analytics-section kind-section dash-unusual-trend" style={{ borderColor: KIND_COLORS.unusual + '55' }}>
             <h3 className="section-title">{t('unusualTrendTitle')}</h3>
             <div className="kind-stats">
               <div className="kind-stat">
@@ -885,7 +911,7 @@ export default function Analytics() {
           </section>
 
           {/* ── Mandatory / unavoidable costs ── */}
-          <section className="analytics-section kind-section" style={{ borderColor: KIND_COLORS.mandatory + '88' }}>
+          <section className="analytics-section kind-section dash-mandatory" style={{ borderColor: KIND_COLORS.mandatory + '88' }}>
             <div className="section-header-row">
               <div>
                 <h3 className="section-title">{t('mandatoryTitle')}</h3>
@@ -946,7 +972,7 @@ export default function Analytics() {
             </div>
           </section>
 
-          <section className="analytics-section">
+          <section className="analytics-section dash-last30">
             <div className="section-header-row">
               <div>
                 <h3 className="section-title">{t('last30Title')}</h3>
@@ -954,6 +980,22 @@ export default function Analytics() {
                   {daily.rawTotal.toFixed(2)} {displayCurrency}
                   {dailyGroups.length ? '' : ` · ${t('allCategories')}`}
                 </span>
+              </div>
+              <div className="kind-toggle-row">
+                {KINDS.map(k => {
+                  const on = dailyKinds.includes(k);
+                  return (
+                    <button
+                      key={k}
+                      className={`chip chip-sm${on ? ' active' : ''}`}
+                      style={on ? { background: KIND_COLORS[k], borderColor: KIND_COLORS[k], color: '#fff' } : undefined}
+                      onClick={() => toggleDailyKind(k)}
+                      title={t('kindHints')[k]}
+                    >
+                      {t('kindLabels')[k]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1034,7 +1076,7 @@ export default function Analytics() {
             )}
           </section>
 
-          <section className="analytics-section">
+          <section className="analytics-section dash-trend">
             <h3 className="section-title">{t('monthlyTrend')}</h3>
             <div className="trend-span-selector">
               {[6, 12, 24].map(n => (
@@ -1063,7 +1105,7 @@ export default function Analytics() {
             </ResponsiveContainer>
           </section>
 
-          <section className="analytics-section">
+          <section className="analytics-section dash-stores">
             <h3 className="section-title">{t('topStores')}</h3>
             {topStores.length === 0 ? (
               <p className="text-muted">{t('noDataMonth')}</p>
@@ -1080,7 +1122,7 @@ export default function Analytics() {
             )}
           </section>
 
-          <section className="analytics-section">
+          <section className="analytics-section dash-items">
             <h3 className="section-title">{t('topItems')}</h3>
             {topItems.length === 0 ? (
               <p className="text-muted">{t('noDataMonth')}</p>
@@ -1097,13 +1139,11 @@ export default function Analytics() {
               </ol>
             )}
           </section>
-        </>
-      )}
-      </div>
 
-      {/* Desktop: persistent sidebar */}
-      <aside className="analytics-sidebar">{transactionPanel}</aside>
-      </div>
+          {/* Desktop only: transaction panel beside the category chart */}
+          <section className="analytics-section dash-tx">{transactionPanel}</section>
+        </div>
+      )}
 
       {/* Mobile: floating button + bottom sheet */}
       {expandedGroup && !loading && (
