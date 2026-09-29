@@ -4,7 +4,7 @@ A progressive web app for scanning receipts with AI, tracking spending, and mana
 
 ## Features
 
-- **AI receipt scanning** — photograph a receipt and have Gemini 2.5 Flash extract store, date, total, and every line item with category assignment
+- **AI receipt scanning** — photograph a receipt, crop and rotate it in the app, and have Gemini 2.5 Flash extract store, date, total, and every line item with category assignment
 - **Manual entry** — add receipts without a photo when needed
 - **Bank statement import** — screenshot your bank/card transaction list or load the bank's CSV export and every row is saved as its own receipt; rows that match an existing receipt (same amount, same day) are flagged as duplicates and unchecked by default, with a softer warning for matches within ±2 days
 - **History with search** — browse all past receipts, search by store name or date

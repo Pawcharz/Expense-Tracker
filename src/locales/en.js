@@ -31,6 +31,12 @@ export default {
   unknownStore: 'unknown store',
   viewExisting: 'View existing',
   addAnyway: 'Add anyway',
+  cropTitle: 'Crop receipt',
+  cropHint: 'Drag the corners or edges to frame the receipt. Drag inside to move.',
+  cropRotate: 'Rotate',
+  cropReset: 'Select all',
+  cropSkip: 'Use full image',
+  cropUse: 'Crop & scan',
 
   // Bank statement import
   importStatement: 'Import bank statement',

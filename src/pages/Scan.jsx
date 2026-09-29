@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
 import { parseReceiptImage, getImageChunks } from '../lib/gemini';
+import ImageCropper from '../components/ImageCropper';
 
 export default function Scan() {
   const { user } = useAuth();
@@ -15,8 +16,16 @@ export default function Scan() {
   const [error, setError] = useState('');
   const [duplicate, setDuplicate] = useState(null);   // matched existing receipt
   const [pendingNav, setPendingNav] = useState(null);  // navigate args held until user decides
+  const [cropFile, setCropFile] = useState(null);      // image awaiting crop before processing
 
-  async function processFile(file) {
+  // Every photo (camera or gallery) goes through the crop dialog first.
+  function processFile(file) {
+    if (!file) return;
+    setError('');
+    setCropFile(file);
+  }
+
+  async function runPipeline(file) {
     if (!file) return;
     setLoading(true);
     setError('');
@@ -95,6 +104,15 @@ export default function Scan() {
 
   return (
     <div className="scan-page page">
+      {cropFile && (
+        <ImageCropper
+          file={cropFile}
+          t={t}
+          onDone={cropped => { setCropFile(null); runPipeline(cropped); }}
+          onSkip={() => { const f = cropFile; setCropFile(null); runPipeline(f); }}
+          onCancel={() => setCropFile(null)}
+        />
+      )}
       {duplicate && (
         <div className="modal-backdrop" onClick={() => setDuplicate(null)}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>

@@ -31,6 +31,12 @@ export default {
   unknownStore: 'nieznany sklep',
   viewExisting: 'Pokaż istniejący',
   addAnyway: 'Dodaj mimo to',
+  cropTitle: 'Przytnij paragon',
+  cropHint: 'Przeciągnij rogi lub krawędzie, aby wykadrować paragon. Przeciągnij środek, aby przesunąć.',
+  cropRotate: 'Obróć',
+  cropReset: 'Zaznacz wszystko',
+  cropSkip: 'Użyj całego zdjęcia',
+  cropUse: 'Przytnij i skanuj',
 
   // Bank statement import
   importStatement: 'Importuj wyciąg z banku',
