@@ -1578,3 +1578,58 @@ a {
     display: none;
   }
 }
+
+/* ── Last 30 days chart controls ── */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.chip:hover {
+  color: var(--text);
+}
+.chip.active {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+.chip .cat-dot {
+  width: 8px;
+  height: 8px;
+}
+.smooth-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.smooth-label {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.smooth-range {
+  flex: 1;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.smooth-value {
+  font-size: 12px;
+  min-width: 64px;
+  text-align: right;
+  color: var(--text-muted);
+}

@@ -95,6 +95,11 @@ export default {
   // Analytics
   spendingByCategory: 'Wydatki według kategorii',
   monthlyTrend: 'Trend miesięczny',
+  last30Title: 'Ostatnie 30 dni',
+  allCategories: 'Wszystkie kategorie',
+  smoothingLabel: 'Wygładzanie',
+  smoothingOff: 'wył.',
+  smoothingDays: 'śr. {n} dni',
   topStores: 'Topowe sklepy',
   topItems: 'Topowe pozycje',
   budgetsTitle: 'Budżety',

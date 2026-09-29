@@ -95,6 +95,11 @@ export default {
   // Analytics
   spendingByCategory: 'Spending by Category',
   monthlyTrend: 'Monthly Trend',
+  last30Title: 'Last 30 Days',
+  allCategories: 'All categories',
+  smoothingLabel: 'Smoothing',
+  smoothingOff: 'off',
+  smoothingDays: '{n}-day avg',
   topStores: 'Top Stores',
   topItems: 'Top Items',
   budgetsTitle: 'Budgets',

@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Pencil, X, List } from 'lucide-react';
 import TransactionList from '../components/TransactionList';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  LineChart, Line, CartesianGrid,
+  LineChart, Line, CartesianGrid, Legend,
 } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -23,6 +23,11 @@ export default function Analytics() {
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Last-30-days daily chart
+  const [dailyItems, setDailyItems] = useState([]);
+  const [dailyGroups, setDailyGroups] = useState([]);       // selected group names; empty = total
+  const [smoothWindow, setSmoothWindow] = useState(7);      // trailing moving-average window in days
   const [trendData, setTrendData] = useState([]);
   const [topStores, setTopStores] = useState([]);
   const [topItems, setTopItems] = useState([]);
@@ -33,6 +38,10 @@ export default function Analytics() {
   const [budgetInputs, setBudgetInputs] = useState({});
   const [allGroups, setAllGroups] = useState([]);
   const [activeHint, setActiveHint] = useState(null);
+
+  useEffect(() => {
+    loadLast30Days();
+  }, [displayCurrency, ratesReady]);
 
   useEffect(() => {
     loadAll();
@@ -60,6 +69,41 @@ export default function Analytics() {
       loadBudgets(),
     ]);
     setLoading(false);
+  }
+
+  async function loadLast30Days() {
+    const end = new Date();
+    end.setHours(0, 0, 0, 0);
+    end.setDate(end.getDate() + 1);               // exclusive upper bound: tomorrow 00:00
+    const start = new Date(end);
+    start.setDate(start.getDate() - 30);          // 30 full days
+
+    const { data: receipts } = await supabase
+      .from('receipts')
+      .select('id, date, currency')
+      .eq('user_id', user.id)
+      .gte('date', start.toISOString())
+      .lt('date', end.toISOString());
+
+    if (!receipts?.length) { setDailyItems([]); return; }
+    const receiptById = Object.fromEntries(receipts.map(r => [r.id, r]));
+
+    const { data: items } = await supabase
+      .from('items')
+      .select('price, quantity, discount, receipt_id, categories(name, category_groups(name, color))')
+      .in('receipt_id', receipts.map(r => r.id))
+      .gt('price', 0);
+
+    setDailyItems((items || []).map(item => {
+      const r = receiptById[item.receipt_id];
+      return {
+        date: r?.date,
+        currency: r?.currency || 'PLN',
+        group: item.categories?.category_groups?.name || 'Other',
+        color: item.categories?.category_groups?.color || '#71717a',
+        netPrice: (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1) - (parseFloat(item.discount) || 0),
+      };
+    }));
   }
 
   async function loadBudgets() {
@@ -365,6 +409,64 @@ export default function Analytics() {
     </div>
   );
 
+  // ── Last 30 days: daily totals per group, smoothed with a trailing moving average ──
+  const daily = useMemo(() => {
+    const dayKey = d => {
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+    const days = [];
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      days.push({ key: dayKey(d), label: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) });
+    }
+    const dayIndex = Object.fromEntries(days.map((d, i) => [d.key, i]));
+
+    // raw[group][dayIdx] = spend in display currency
+    const raw = {};
+    const groupColor = {};
+    const groupTotal = {};
+    dailyItems.forEach(item => {
+      if (!item.date) return;
+      const idx = dayIndex[dayKey(new Date(item.date))];
+      if (idx == null) return;
+      const amt = Math.max(0, item.netPrice) * rateTo(item.currency, displayCurrency);
+      if (!raw[item.group]) { raw[item.group] = new Array(30).fill(0); groupColor[item.group] = item.color; groupTotal[item.group] = 0; }
+      raw[item.group][idx] += amt;
+      groupTotal[item.group] += amt;
+    });
+
+    const availableGroups = Object.keys(raw)
+      .sort((a, b) => groupTotal[b] - groupTotal[a])
+      .map(name => ({ name, color: groupColor[name], total: groupTotal[name] }));
+
+    const active = dailyGroups.filter(g => raw[g]);
+    const series = active.length
+      ? active.map(name => ({ name, color: groupColor[name], values: raw[name] }))
+      : [{ name: '__total', color: '#8b5cf6', values: days.map((_, i) => Object.values(raw).reduce((s, arr) => s + arr[i], 0)) }];
+
+    const w = Math.max(1, smoothWindow);
+    const smooth = values => values.map((_, i) => {
+      const from = Math.max(0, i - w + 1);
+      let sum = 0;
+      for (let j = from; j <= i; j++) sum += values[j];
+      return parseFloat((sum / (i - from + 1)).toFixed(2));
+    });
+
+    const data = days.map((d, i) => {
+      const row = { label: d.label };
+      series.forEach(sr => { row[sr.name] = smooth(sr.values)[i]; });
+      return row;
+    });
+    const rawTotal = series.reduce((s, sr) => s + sr.values.reduce((a, b) => a + b, 0), 0);
+    return { data, series, availableGroups, rawTotal };
+  }, [dailyItems, dailyGroups, smoothWindow, displayCurrency, ratesReady]);
+
+  function toggleDailyGroup(name) {
+    setDailyGroups(prev => prev.includes(name) ? prev.filter(g => g !== name) : [...prev, name]);
+  }
+
   const budgetProgressItems = budgets
     .filter(b => parseFloat(b.amount) > 0)
     .map(b => {
@@ -531,6 +633,94 @@ export default function Analytics() {
                   </span>
                 </div>
               </div>
+            )}
+          </section>
+
+          <section className="analytics-section">
+            <div className="section-header-row">
+              <div>
+                <h3 className="section-title">{t('last30Title')}</h3>
+                <span className="section-subtitle">
+                  {daily.rawTotal.toFixed(2)} {displayCurrency}
+                  {dailyGroups.length ? '' : ` · ${t('allCategories')}`}
+                </span>
+              </div>
+            </div>
+
+            <div className="chip-row">
+              <button
+                className={`chip${dailyGroups.length === 0 ? ' active' : ''}`}
+                onClick={() => setDailyGroups([])}
+              >
+                {t('allCategories')}
+              </button>
+              {daily.availableGroups.map(g => {
+                const on = dailyGroups.includes(g.name);
+                return (
+                  <button
+                    key={g.name}
+                    className={`chip${on ? ' active' : ''}`}
+                    style={on ? { background: g.color, borderColor: g.color, color: '#0a0a0a' } : { borderColor: g.color + '66' }}
+                    onClick={() => toggleDailyGroup(g.name)}
+                  >
+                    <span className="cat-dot" style={{ background: g.color }} />
+                    {t('categoryGroups')[g.name] || g.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="smooth-row">
+              <label className="smooth-label text-muted" htmlFor="smooth-range">
+                {t('smoothingLabel')}
+              </label>
+              <input
+                id="smooth-range"
+                type="range"
+                min="1"
+                max="14"
+                step="1"
+                value={smoothWindow}
+                onChange={e => setSmoothWindow(parseInt(e.target.value, 10))}
+                className="smooth-range"
+              />
+              <span className="smooth-value" style={{ fontFamily: 'var(--font-mono)' }}>
+                {smoothWindow === 1 ? t('smoothingOff') : t('smoothingDays').replace('{n}', smoothWindow)}
+              </span>
+            </div>
+
+            {daily.data.every(row => daily.series.every(sr => !row[sr.name])) ? (
+              <p className="text-muted">{t('noDataPeriod')}</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={daily.data} margin={{ left: 8, right: 16, top: 8 }}>
+                  <CartesianGrid stroke="#222" strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fill: '#666', fontSize: 11 }} axisLine={false} tickLine={false} interval={4} />
+                  <YAxis tick={{ fill: '#666', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} width={48} />
+                  <Tooltip
+                    formatter={(v, name) => [`${Number(v).toFixed(2)} ${displayCurrency}`, name === '__total' ? t('totalLabel') : (t('categoryGroups')[name] || name)]}
+                    contentStyle={{ background: '#141414', border: '1px solid #222', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
+                    labelStyle={{ color: '#f0f0f0' }}
+                  />
+                  {daily.series.length > 1 && (
+                    <Legend
+                      formatter={name => <span style={{ color: '#aaa', fontSize: 11 }}>{t('categoryGroups')[name] || name}</span>}
+                    />
+                  )}
+                  {daily.series.map(sr => (
+                    <Line
+                      key={sr.name}
+                      type="monotone"
+                      dataKey={sr.name}
+                      stroke={sr.color}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                      isAnimationActive={false}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
             )}
           </section>
 
