@@ -6,6 +6,7 @@ A progressive web app for scanning receipts with AI, tracking spending, and mana
 
 - **AI receipt scanning** — photograph a receipt and have Gemini 2.5 Flash extract store, date, total, and every line item with category assignment
 - **Manual entry** — add receipts without a photo when needed
+- **Bank statement import** — screenshot your bank/card transaction list and every row is saved as its own receipt; rows that match an existing receipt (same amount, same day) are flagged as duplicates and unchecked by default, with a softer warning for matches within ±2 days
 - **History with search** — browse all past receipts, search by store name or date
 - **Analytics** — spending charts with drill-down into category groups and subcategories; monthly budget tracking per group
 - **Multi-language** — English and Polish UI; item names are translated to the user's chosen language at scan time
@@ -32,6 +33,7 @@ src/
     Scan.jsx               # Camera / file-pick interface, calls Gemini API
     Review.jsx             # Edit AI-parsed items before saving
     ManualEntry.jsx        # Form-based receipt entry without a photo
+    ImportStatement.jsx    # Bank statement screenshot → many receipts, with duplicate detection
     History.jsx            # Paginated receipt list with search
     ReceiptDetail.jsx      # Single receipt view with item breakdown
     Analytics.jsx          # Charts, category drill-down, budget progress bars
@@ -44,7 +46,8 @@ src/
     CategoryBadge.jsx      # Coloured chip showing category group
   lib/
     supabase.js            # Supabase client singleton
-    gemini.js              # parseReceiptImage() and prompt construction
+    gemini.js              # parseReceiptImage(), parseBankStatementImage() and prompt construction
+    duplicates.js          # Matches parsed transactions against existing receipts
     categories.js          # Category/group lookup helpers and i18n maps
   locales/
     en.js                  # English UI strings

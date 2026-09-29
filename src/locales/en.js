@@ -32,6 +32,25 @@ export default {
   viewExisting: 'View existing',
   addAnyway: 'Add anyway',
 
+  // Bank statement import
+  importStatement: 'Import bank statement',
+  importStatementTitle: 'Import Bank Statement',
+  importStatementSubtitle: 'Upload a screenshot of your bank or card transaction list. Each row becomes a separate receipt.',
+  chooseScreenshot: 'Choose screenshot',
+  backToScan: 'Back',
+  readingStatement: 'Reading transactions…',
+  checkingDuplicates: 'Checking for duplicates…',
+  failedToProcessStatement: 'Failed to process the statement',
+  noTransactionsFound: 'No transactions found in this screenshot',
+  reviewTransactionsTitle: 'Review Transactions',
+  importSummary: '{count} transactions found, {dups} already in your history. Duplicates are unchecked.',
+  selectAll: 'Select all',
+  dupExact: 'Already saved: {store} on {date}, same amount.',
+  dupNear: 'Possible duplicate: {store} on {date}, same amount (bank may post a day late).',
+  incomingTransaction: 'Incoming money — not an expense.',
+  selectedTotal: 'Selected total',
+  saveTransactions: 'Save {n} transactions',
+
   // Review / ManualEntry
   reviewTitle: 'Review Receipt',
   newReceiptTitle: 'New Receipt',

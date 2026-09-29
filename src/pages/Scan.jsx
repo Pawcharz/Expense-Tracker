@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Image, RefreshCw } from 'lucide-react';
+import { Camera, Image, RefreshCw, Landmark } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
@@ -165,6 +165,16 @@ export default function Scan() {
           style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
           onChange={handleFileChange}
         />
+
+        <button
+          className="btn btn-secondary"
+          style={{ marginTop: '10px' }}
+          onClick={() => navigate('/import')}
+          disabled={loading}
+        >
+          <Landmark size={18} />
+          <span>{t('importStatement')}</span>
+        </button>
 
         <button
           className="btn btn-ghost"

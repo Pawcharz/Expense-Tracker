@@ -1259,3 +1259,101 @@ a {
   color: var(--text-muted);
   margin-bottom: 0;
 }
+
+/* ── Bank statement import ── */
+.import-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.import-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.import-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border);
+  transition: opacity 0.15s;
+}
+.import-row-off {
+  opacity: 0.45;
+}
+.import-row-head {
+  display: grid;
+  grid-template-columns: 20px 1fr 84px 64px 36px;
+  gap: 6px;
+  align-items: center;
+}
+.import-row-head input[type='checkbox'],
+.import-checkbox-label input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.import-amount {
+  text-align: right;
+}
+.import-currency {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.import-row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.import-raw {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.import-dup-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  line-height: 1.35;
+}
+.import-dup-badge span {
+  flex: 1;
+}
+.import-dup-exact {
+  background: #ef444418;
+  border: 1px solid #ef444440;
+  color: #f87171;
+}
+.import-dup-near {
+  background: #f59e0b18;
+  border: 1px solid #f59e0b40;
+  color: #fbbf24;
+}
+.import-dup-income {
+  background: #22c55e18;
+  border: 1px solid #22c55e40;
+  color: #4ade80;
+}
+.import-dup-link {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+}

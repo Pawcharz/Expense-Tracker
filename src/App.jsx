@@ -9,8 +9,9 @@ import ReceiptDetail from './pages/ReceiptDetail';
 import Analytics from './pages/Analytics';
 import ManualEntry from './pages/ManualEntry';
 import Settings from './pages/Settings';
+import ImportStatement from './pages/ImportStatement';
 
-const NO_NAV_PATHS = ['/login', '/review', '/manual'];
+const NO_NAV_PATHS = ['/login', '/review', '/manual', '/import'];
 
 export default function App() {
   const location = useLocation();
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/receipt/:id" element={<ReceiptDetail />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/manual" element={<ManualEntry />} />
+          <Route path="/import" element={<ImportStatement />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

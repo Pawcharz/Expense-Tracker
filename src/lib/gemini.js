@@ -285,3 +285,132 @@ export function imageFileToBase64(file) {
     reader.readAsDataURL(file);
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bank statement / transaction list parsing
+// A screenshot of a banking app's transaction list → one entry per transaction.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STATEMENT_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    currency: { type: 'string', nullable: true },
+    transactions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          merchant: { type: 'string' },
+          raw_description: { type: 'string' },
+          date_on_screen: { type: 'boolean' },
+          date: { type: 'string', nullable: true },
+          time_on_screen: { type: 'boolean' },
+          amount: { type: 'number' },
+          is_expense: { type: 'boolean' },
+          currency: { type: 'string', nullable: true },
+          category_group: { type: 'string' },
+          category: { type: 'string' },
+        },
+        required: [
+          'merchant', 'raw_description', 'date_on_screen', 'date', 'time_on_screen',
+          'amount', 'is_expense', 'category_group', 'category',
+        ],
+      },
+    },
+  },
+  required: ['transactions'],
+};
+
+function buildStatementPrompt(language, todayIso) {
+  const nameLang = language === 'pl' ? 'Polish' : 'English';
+  const groups = GROUP_NAMES.join(', ');
+  const categories = CATEGORY_NAMES.join(', ');
+  return `You are a bank transaction list parser. The image is a screenshot of a banking / card app showing a LIST OF SEPARATE TRANSACTIONS (one row per payment). Extract EVERY transaction row as a separate entry.
+
+Today's date is ${todayIso}. Use it to resolve relative date headers such as "Today", "Yesterday", "Dziś", "Wczoraj", or dates without a year (assume the most recent past occurrence).
+
+OUTPUT LANGUAGE: ${nameLang}. The screenshot may be in any language.
+
+Rules:
+- Each row in the list = one transaction. Never merge rows. Never invent rows.
+- Section headers (dates like "Monday, 12 May" or "Yesterday") apply to every row beneath them until the next header.
+- merchant: a clean, human-readable merchant name in ${nameLang}. Strip card-processor noise like "CARD PAYMENT", "PLATNOSC KARTA", city names, terminal ids, reference numbers, "*", trailing country codes. e.g. "UBER *TRIP HELP.UBER.COM" → "Uber", "ZABKA Z1234 K.1 WARSZAWA" → "Żabka".
+- raw_description: the row description exactly as displayed.
+- date_on_screen: true if the transaction's date can be determined from the screenshot (row or section header). false otherwise.
+- date: ONLY when date_on_screen is true. Format YYYY-MM-DDTHH:MM (24h). If a time is visible for the row, include it and set time_on_screen=true; otherwise use T12:00 and set time_on_screen=false. Year first, never swap day and month. null when date_on_screen is false.
+- amount: the absolute (positive) transaction amount as displayed for that row.
+- is_expense: true for money going OUT (purchases, card payments, transfers out, subscriptions, fees). false for money coming IN (salary, refunds, incoming transfers, cashback). Rows with a "+" sign or green colour are usually incoming.
+- currency: ISO 4217 code for this row if shown (zł → PLN, € → EUR, $ → USD, £ → GBP, Kč → CZK); otherwise null. The top-level currency is the account's main currency if you can tell, else null.
+- category_group: pick EXACTLY one from: ${groups}
+- category: pick EXACTLY one that belongs to the chosen group from: ${categories}
+  Guidance: Uber/Bolt/FreeNow rides → Transport > Taxi / Rideshare. Uber Eats/Glovo/Wolt/Bolt Food/Pyszne → Dining & Takeout > Delivery. Supermarkets (Biedronka, Lidl, Żabka, Kaufland, Carrefour, Auchan, Tesco) → Groceries > Pantry & Dry Goods unless obvious otherwise. Netflix/Spotify/YouTube → Digital & Subscriptions > Entertainment Streaming. Pharmacies (Apteka) → Health & Medical > Pharmacy. Fuel stations (Orlen, BP, Shell, Circle K) → Transport > Fuel. Bank fees/commissions → Finance & Fees > Bank Fees. Unknown → Other > Uncategorized.
+- Pending / not-yet-booked transactions still count; include them.
+- Ignore running balance figures, account totals, and "available funds" — those are NOT transactions.`;
+}
+
+// Normalize: discard fabricated dates, coerce amounts to positive numbers.
+function normalizeStatementData(data) {
+  const txs = Array.isArray(data.transactions) ? data.transactions : [];
+  return {
+    currency: data.currency || null,
+    transactions: txs.map(tx => ({
+      merchant: (tx.merchant || '').trim(),
+      raw_description: tx.raw_description || '',
+      date: tx.date_on_screen ? tx.date : null,
+      time_on_screen: Boolean(tx.date_on_screen && tx.time_on_screen),
+      amount: Math.abs(Number(tx.amount) || 0),
+      is_expense: tx.is_expense !== false,
+      currency: tx.currency || data.currency || null,
+      category_group: tx.category_group || 'Other',
+      category: tx.category || 'Uncategorized',
+    })),
+  };
+}
+
+async function parseStatementImageDirect(base64, mimeType, language, apiKey, todayIso) {
+  const result = await geminiCall(
+    apiKey,
+    [
+      { text: buildStatementPrompt(language, todayIso) },
+      { inline_data: { mime_type: mimeType, data: base64 } },
+    ],
+    {
+      temperature: 0.1,
+      maxOutputTokens: 32768,
+      responseMimeType: 'application/json',
+      responseSchema: STATEMENT_RESPONSE_SCHEMA,
+    }
+  );
+  return normalizeStatementData(JSON.parse(result));
+}
+
+async function parseStatementText(text, language, apiKey, todayIso, numChunks) {
+  const result = await geminiCall(
+    apiKey,
+    [{ text: `${buildStatementPrompt(language, todayIso)}\n\nTransaction list text:\n${text}` }],
+    {
+      temperature: 0.1,
+      maxOutputTokens: Math.min(32768 * numChunks, 65536),
+      responseMimeType: 'application/json',
+      responseSchema: STATEMENT_RESPONSE_SCHEMA,
+    }
+  );
+  return normalizeStatementData(JSON.parse(result));
+}
+
+// Main entry point for bank-statement screenshots (called by ImportStatement.jsx).
+// Accepts the same chunk array produced by getImageChunks().
+export async function parseBankStatementImage(chunks, language = 'en') {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  if (chunks.length === 1) {
+    return parseStatementImageDirect(chunks[0].base64, chunks[0].mimeType, language, apiKey, todayIso);
+  }
+
+  const ocrTexts = await Promise.all(
+    chunks.map(c => ocrChunk(c.base64, c.mimeType, apiKey))
+  );
+  const mergedText = await mergeOcrTexts(ocrTexts, apiKey);
+  return parseStatementText(mergedText, language, apiKey, todayIso, chunks.length);
+}

@@ -32,6 +32,25 @@ export default {
   viewExisting: 'Pokaż istniejący',
   addAnyway: 'Dodaj mimo to',
 
+  // Bank statement import
+  importStatement: 'Importuj wyciąg z banku',
+  importStatementTitle: 'Import wyciągu z banku',
+  importStatementSubtitle: 'Wgraj zrzut ekranu z listą transakcji z banku lub karty. Każdy wiersz stanie się osobnym paragonem.',
+  chooseScreenshot: 'Wybierz zrzut ekranu',
+  backToScan: 'Wróć',
+  readingStatement: 'Czytam transakcje…',
+  checkingDuplicates: 'Sprawdzam duplikaty…',
+  failedToProcessStatement: 'Nie udało się przetworzyć wyciągu',
+  noTransactionsFound: 'Nie znaleziono transakcji na tym zrzucie ekranu',
+  reviewTransactionsTitle: 'Przejrzyj transakcje',
+  importSummary: 'Znaleziono {count} transakcji, {dups} już jest w historii. Duplikaty są odznaczone.',
+  selectAll: 'Zaznacz wszystkie',
+  dupExact: 'Już zapisane: {store} z dnia {date}, ta sama kwota.',
+  dupNear: 'Możliwy duplikat: {store} z dnia {date}, ta sama kwota (bank może księgować z opóźnieniem).',
+  incomingTransaction: 'Wpływ środków — to nie wydatek.',
+  selectedTotal: 'Suma zaznaczonych',
+  saveTransactions: 'Zapisz {n} transakcji',
+
   // Review / ManualEntry
   reviewTitle: 'Sprawdź paragon',
   newReceiptTitle: 'Nowy paragon',
