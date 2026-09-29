@@ -96,7 +96,7 @@ export default function Analytics() {
 
     const { data: receipts } = await supabase
       .from('receipts')
-      .select('id, date, currency')
+      .select('id, date, currency, kind')
       .eq('user_id', user.id)
       .gte('date', start.toISOString())
       .lt('date', end.toISOString());
