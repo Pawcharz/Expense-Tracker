@@ -499,3 +499,32 @@ export async function categorizeTransactions(transactions, language = 'en') {
   }
   return enriched;
 }
+
+// Stack several photos of one receipt vertically into a single JPEG for
+// storage. Each image is scaled to a common width so the result reads top to
+// bottom like the original receipt.
+export async function stitchImages(files) {
+  const imgs = await Promise.all(files.map(file => new Promise((resolve, reject) => {
+    const el = new Image();
+    const url = URL.createObjectURL(file);
+    el.onload = () => { URL.revokeObjectURL(url); resolve(el); };
+    el.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+    el.src = url;
+  })));
+  const width = Math.min(1600, ...imgs.map(i => i.width));
+  const heights = imgs.map(i => Math.round(i.height * (width / i.width)));
+  const GAP = 12;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = heights.reduce((a, b) => a + b, 0) + GAP * (imgs.length - 1);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  let y = 0;
+  imgs.forEach((img, i) => {
+    ctx.drawImage(img, 0, y, width, heights[i]);
+    y += heights[i] + GAP;
+  });
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+  return new File([blob], 'receipt-stitched.jpg', { type: 'image/jpeg' });
+}

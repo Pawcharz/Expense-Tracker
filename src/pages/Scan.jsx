@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Image, RefreshCw, Landmark, ClipboardPaste } from 'lucide-react';
+import { Camera, Image, RefreshCw, Landmark, ClipboardPaste, X, Layers } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
-import { parseReceiptImage, getImageChunks } from '../lib/gemini';
+import { parseReceiptImage, getImageChunks, stitchImages } from '../lib/gemini';
 import ImageCropper from '../components/ImageCropper';
 import { usePasteImage } from '../hooks/usePasteImage';
 
@@ -18,6 +18,7 @@ export default function Scan() {
   const [duplicate, setDuplicate] = useState(null);   // matched existing receipt
   const [pendingNav, setPendingNav] = useState(null);  // navigate args held until user decides
   const [cropFile, setCropFile] = useState(null);      // image awaiting crop before processing
+  const [pages, setPages] = useState([]);              // cropped images queued for one receipt
 
   // Every photo (camera, gallery or clipboard) goes through the crop dialog first.
   function processFile(file) {
@@ -34,21 +35,43 @@ export default function Scan() {
     if (!res.ok) setError(t(res.reason === 'no-image' ? 'pasteNoImage' : 'pasteUnsupported'));
   }
 
-  async function runPipeline(file) {
-    if (!file) return;
+  // Queue a cropped page and return to the scan screen for the next photo.
+  function addPage(file) {
+    setCropFile(null);
+    setPages(prev => [...prev, file]);
+  }
+
+  function removePage(index) {
+    setPages(prev => prev.filter((_, i) => i !== index));
+  }
+
+  // Run the pipeline on all queued pages plus the one just cropped (if any).
+  function finishWith(file) {
+    setCropFile(null);
+    const all = file ? [...pages, file] : pages;
+    setPages([]);
+    runPipeline(all);
+  }
+
+  async function runPipeline(files) {
+    files = Array.isArray(files) ? files : [files];
+    if (files.length === 0) return;
     setLoading(true);
     setError('');
 
     try {
+      // Several photos of one receipt: stitch them for storage and let Gemini
+      // OCR each page as its own chunk (the multi-chunk path merges overlaps).
+      const file = files.length === 1 ? files[0] : await stitchImages(files);
       const mimeType = file.type || 'image/jpeg';
       const fileExt = file.name.split('.').pop() || 'jpg';
       const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
 
-      // Upload to storage and prepare Gemini chunks simultaneously
-      const [uploadResult, chunks] = await Promise.all([
+      const [uploadResult, chunkLists] = await Promise.all([
         supabase.storage.from('receipts').upload(fileName, file, { contentType: mimeType }),
-        getImageChunks(file),
+        Promise.all(files.map(f => getImageChunks(f))),
       ]);
+      const chunks = chunkLists.flat();
 
       if (uploadResult.error) throw uploadResult.error;
 
@@ -117,8 +140,10 @@ export default function Scan() {
         <ImageCropper
           file={cropFile}
           t={t}
-          onDone={cropped => { setCropFile(null); runPipeline(cropped); }}
-          onSkip={() => { const f = cropFile; setCropFile(null); runPipeline(f); }}
+          pageNumber={pages.length + 1}
+          onDone={finishWith}
+          onAddMore={addPage}
+          onSkip={() => finishWith(cropFile)}
           onCancel={() => setCropFile(null)}
         />
       )}
@@ -158,14 +183,28 @@ export default function Scan() {
 
       <div className="scan-content">
         <h2 className="scan-title">{t('scanTitle')}</h2>
-        <p className="scan-subtitle text-muted">{t('scanSubtitle')}</p>
+        <p className="scan-subtitle text-muted">{pages.length ? t('scanSubtitlePages') : t('scanSubtitle')}</p>
+
+        {pages.length > 0 && (
+          <div className="pages-strip">
+            <div className="pages-thumbs">
+              {pages.map((f, i) => (
+                <PageThumb key={i} file={f} index={i} onRemove={() => removePage(i)} />
+              ))}
+            </div>
+            <button className="btn btn-primary btn-full" onClick={() => finishWith(null)} disabled={loading}>
+              <Layers size={18} />
+              {t('scanPages').replace('{n}', pages.length)}
+            </button>
+          </div>
+        )}
 
         <label
           className={`btn-camera${loading ? ' btn-disabled' : ''}`}
           style={{ cursor: loading ? 'not-allowed' : 'pointer' }}
         >
           <Camera size={40} />
-          <span>{t('takePhoto')}</span>
+          <span>{pages.length ? t('addPagePhoto') : t('takePhoto')}</span>
           <input
             type="file"
             accept="image/*"
@@ -240,6 +279,22 @@ export default function Scan() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function PageThumb({ file, index, onRemove }) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  return (
+    <div className="page-thumb">
+      {url && <img src={url} alt="" />}
+      <span className="page-thumb-num">{index + 1}</span>
+      <button className="page-thumb-remove" onClick={onRemove} aria-label="Remove page"><X size={12} /></button>
     </div>
   );
 }

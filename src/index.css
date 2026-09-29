@@ -1930,3 +1930,66 @@ a {
 @media (hover: hover) and (pointer: fine) {
   .paste-hint { display: block; }
 }
+
+/* ── Multi-page receipt queue ── */
+.pages-strip {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pages-thumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.page-thumb {
+  position: relative;
+  width: 64px;
+  height: 84px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #000;
+}
+.page-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.page-thumb-num {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.page-thumb-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.cropper-actions .btn-secondary {
+  flex: 0 0 auto;
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { RotateCw, Check, X, Maximize2 } from 'lucide-react';
+import { RotateCw, Check, X, Maximize2, Plus } from 'lucide-react';
 
 const HANDLE_HIT = 28;   // px radius around a corner/edge that grabs it
 const MIN_SIZE = 40;     // px, in displayed coordinates
@@ -9,7 +9,7 @@ const MIN_SIZE = 40;     // px, in displayed coordinates
  * `file` is the original image; `onDone(File)` receives the cropped JPEG,
  * `onSkip()` keeps the original, `onCancel()` aborts.
  */
-export default function ImageCropper({ file, onDone, onSkip, onCancel, t }) {
+export default function ImageCropper({ file, onDone, onAddMore, onSkip, onCancel, t, pageNumber }) {
   const containerRef = useRef(null);
   const imgRef = useRef(null);
   const [src, setSrc] = useState(null);         // object URL of the (possibly rotated) source
@@ -148,9 +148,9 @@ export default function ImageCropper({ file, onDone, onSkip, onCancel, t }) {
     }
   }
 
-  async function confirm() {
+  async function cropToFile() {
     const img = imgRef.current;
-    if (!img || !box || !crop || !natural) return;
+    if (!img || !box || !crop || !natural) return null;
     setBusy(true);
     try {
       const sx = Math.round(crop.x / box.scale);
@@ -163,10 +163,20 @@ export default function ImageCropper({ file, onDone, onSkip, onCancel, t }) {
       canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
       const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92));
       const name = (file.name || 'receipt').replace(/\.[^.]+$/, '') + '.jpg';
-      onDone(new File([blob], name, { type: 'image/jpeg' }));
+      return new File([blob], name, { type: 'image/jpeg' });
     } finally {
       setBusy(false);
     }
+  }
+
+  async function confirm() {
+    const f = await cropToFile();
+    if (f) onDone(f);
+  }
+
+  async function addMore() {
+    const f = await cropToFile();
+    if (f) onAddMore(f);
   }
 
   const cursorFor = mode => ({
@@ -184,7 +194,7 @@ export default function ImageCropper({ file, onDone, onSkip, onCancel, t }) {
     <div className="cropper">
       <div className="cropper-top">
         <button className="btn-icon" onClick={onCancel} aria-label={t('cancel')}><X size={22} /></button>
-        <span className="cropper-title">{t('cropTitle')}</span>
+        <span className="cropper-title">{t('cropTitle')}{pageNumber > 1 ? ` · ${t('pageN').replace('{n}', pageNumber)}` : ''}</span>
         <div style={{ display: 'flex', gap: 4 }}>
           <button className="btn-icon" onClick={resetCrop} title={t('cropReset')} aria-label={t('cropReset')}><Maximize2 size={20} /></button>
           <button className="btn-icon" onClick={rotate} disabled={busy} title={t('cropRotate')} aria-label={t('cropRotate')}><RotateCw size={20} /></button>
@@ -228,9 +238,15 @@ export default function ImageCropper({ file, onDone, onSkip, onCancel, t }) {
 
       <div className="cropper-actions">
         <button className="btn btn-ghost" onClick={onSkip} disabled={busy}>{t('cropSkip')}</button>
+        {onAddMore && (
+          <button className="btn btn-secondary" onClick={addMore} disabled={busy || !crop} title={t('cropAddMoreHint')}>
+            <Plus size={18} />
+            {t('cropAddMore')}
+          </button>
+        )}
         <button className="btn btn-primary" onClick={confirm} disabled={busy || !crop}>
           <Check size={18} />
-          {t('cropUse')}
+          {pageNumber > 1 ? t('cropUseAll').replace('{n}', pageNumber) : t('cropUse')}
         </button>
       </div>
     </div>
