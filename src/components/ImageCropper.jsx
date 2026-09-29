@@ -38,13 +38,12 @@ export default function ImageCropper({ file, onDone, onAddMore, onSkip, onCancel
     setNatural({ w: img.naturalWidth, h: img.naturalHeight });
     setBox({ x, y, w, h, scale });
     setCrop(prev => {
-      // Keep relative crop across resizes; otherwise start with a small inset.
+      // Keep relative crop across resizes; otherwise start with the full image.
       if (prev && prev._rel) {
         return { x: prev._rel.x * w, y: prev._rel.y * h, w: prev._rel.w * w, h: prev._rel.h * h, _rel: prev._rel };
       }
-      const inset = 0.04;
-      const c = { x: w * inset, y: h * inset, w: w * (1 - 2 * inset), h: h * (1 - 2 * inset) };
-      return { ...c, _rel: { x: inset, y: inset, w: 1 - 2 * inset, h: 1 - 2 * inset } };
+      // Default to the whole image; the user shrinks the frame if needed.
+      return { x: 0, y: 0, w, h, _rel: { x: 0, y: 0, w: 1, h: 1 } };
     });
   }, []);
 
