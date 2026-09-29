@@ -105,6 +105,12 @@ export default {
   noDataPeriod: 'No data for this period.',
   budgetLabel: 'Budget',
   totalSpent: 'Total spent',
+  transactionsFor: 'Transactions',
+  selectCategoryHint: 'No category selected',
+  selectCategoryBody: 'Tap a bar in the chart to see the receipts and items behind it. Tap a subcategory to narrow it down.',
+  tapSubcategoryHint: 'Tap a subcategory to narrow the list.',
+  clearSelection: 'Clear selection',
+  nReceipts: '{n} receipts',
   monthNames: ['January','February','March','April','May','June','July','August','September','October','November','December'],
   monthNamesShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
 

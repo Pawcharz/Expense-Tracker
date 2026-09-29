@@ -105,6 +105,12 @@ export default {
   noDataPeriod: 'Brak danych za ten okres.',
   budgetLabel: 'Budżet',
   totalSpent: 'Łącznie wydane',
+  transactionsFor: 'Transakcje',
+  selectCategoryHint: 'Nie wybrano kategorii',
+  selectCategoryBody: 'Dotknij słupka na wykresie, aby zobaczyć paragony i pozycje, które się na niego składają. Dotknij podkategorii, aby zawęzić listę.',
+  tapSubcategoryHint: 'Dotknij podkategorii, aby zawęzić listę.',
+  clearSelection: 'Wyczyść wybór',
+  nReceipts: '{n} paragonów',
   monthNames: ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'],
   monthNamesShort: ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'],
 

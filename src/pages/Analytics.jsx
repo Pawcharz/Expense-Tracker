@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Pencil, X, List } from 'lucide-react';
+import TransactionList from '../components/TransactionList';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   LineChart, Line, CartesianGrid,
@@ -20,6 +21,8 @@ export default function Analytics() {
   const [trendSpan, setTrendSpan] = useState(6);
   const [rawItems, setRawItems] = useState([]);
   const [expandedGroup, setExpandedGroup] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [trendData, setTrendData] = useState([]);
   const [topStores, setTopStores] = useState([]);
   const [topItems, setTopItems] = useState([]);
@@ -111,27 +114,31 @@ export default function Analytics() {
 
     const { data: receipts } = await supabase
       .from('receipts')
-      .select('id, currency')
+      .select('id, store, date, currency')
       .eq('user_id', user.id)
       .gte('date', from)
       .lt('date', to);
 
     if (!receipts?.length) { setRawItems([]); return; }
     const ids = receipts.map(r => r.id);
-    const currencyByReceipt = Object.fromEntries(receipts.map(r => [r.id, r.currency || 'PLN']));
+    const receiptById = Object.fromEntries(receipts.map(r => [r.id, r]));
 
     const { data: items } = await supabase
       .from('items')
-      .select('price, quantity, discount, receipt_id, categories(name, category_groups(name, color))')
+      .select('id, name, price, quantity, discount, receipt_id, categories(name, category_groups(name, color))')
       .in('receipt_id', ids)
       .gt('price', 0);
 
-    // Attach currency and compute net line amount (price × qty − discount).
-    const enriched = (items || []).map(item => ({
-      ...item,
-      netPrice: (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1) - (parseFloat(item.discount) || 0),
-      currency: currencyByReceipt[item.receipt_id] || 'PLN',
-    }));
+    // Attach receipt meta and compute net line amount (price × qty − discount).
+    const enriched = (items || []).map(item => {
+      const r = receiptById[item.receipt_id];
+      return {
+        ...item,
+        netPrice: (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1) - (parseFloat(item.discount) || 0),
+        currency: r?.currency || 'PLN',
+        receipt: r ? { id: r.id, store: r.store, date: r.date } : { id: item.receipt_id, store: null, date: null },
+      };
+    });
     setRawItems(enriched);
   }
 
@@ -274,6 +281,90 @@ export default function Analytics() {
     }
   })();
 
+  // Line items matching the current selection (group, optionally narrowed to a
+  // subcategory), grouped by receipt and sorted newest first.
+  const selectedGroups = useMemo(() => {
+    if (!expandedGroup) return [];
+    const toDisp = (item) => Math.max(0, item.netPrice ?? (parseFloat(item.price) || 0)) * rateTo(item.currency || 'PLN', displayCurrency);
+    const byReceipt = {};
+    rawItems.forEach(item => {
+      const gName = item.categories?.category_groups?.name || 'Other';
+      if (gName !== expandedGroup) return;
+      const cName = item.categories?.name || 'Uncategorized';
+      if (selectedCategory && cName !== selectedCategory) return;
+      const rid = item.receipt.id;
+      if (!byReceipt[rid]) byReceipt[rid] = { receipt: item.receipt, items: [], total: 0 };
+      const amount = toDisp(item);
+      byReceipt[rid].items.push({
+        id: item.id,
+        name: item.name,
+        amount,
+        categoryLabel: selectedCategory ? null : (t('categoryNames')[cName] || cName),
+      });
+      byReceipt[rid].total += amount;
+    });
+    return Object.values(byReceipt)
+      .filter(g => g.total > 0)
+      .sort((a, b) => new Date(b.receipt.date || 0) - new Date(a.receipt.date || 0));
+  }, [rawItems, expandedGroup, selectedCategory, displayCurrency, ratesReady]);
+
+  const selectedTotal = selectedGroups.reduce((s, g) => s + g.total, 0);
+  const selectedCount = selectedGroups.length;
+  const selectionLabel = expandedGroup
+    ? (selectedCategory
+        ? `${t('categoryGroups')[expandedGroup] || expandedGroup} › ${t('categoryNames')[selectedCategory] || selectedCategory}`
+        : (t('categoryGroups')[expandedGroup] || expandedGroup))
+    : null;
+
+  function clearSelection() {
+    setExpandedGroup(null);
+    setSelectedCategory(null);
+    setSheetOpen(false);
+  }
+
+  function handleBarClick(data) {
+    const name = data?.activePayload?.[0]?.payload?.name;
+    if (!name) return;
+    if (!expandedGroup) {
+      setExpandedGroup(name);
+      setSelectedCategory(null);
+    } else {
+      setSelectedCategory(prev => (prev === name ? null : name));
+    }
+  }
+
+  const transactionPanel = (
+    <div className="tx-panel">
+      <div className="tx-panel-head">
+        <div className="tx-panel-title-col">
+          <span className="tx-panel-eyebrow text-muted">{t('transactionsFor')}</span>
+          <span className="tx-panel-title">{selectionLabel || t('selectCategoryHint')}</span>
+        </div>
+        {expandedGroup && (
+          <button className="btn-icon btn-ghost-small" onClick={clearSelection} aria-label={t('clearSelection')} title={t('clearSelection')}>
+            <X size={16} />
+          </button>
+        )}
+      </div>
+      {expandedGroup ? (
+        <>
+          <div className="tx-panel-summary">
+            <span className="text-muted">{t('nReceipts').replace('{n}', selectedCount)}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{selectedTotal.toFixed(2)} {displayCurrency}</span>
+          </div>
+          {selectedCategory && (
+            <button className="btn btn-ghost tx-panel-back" onClick={() => setSelectedCategory(null)}>
+              ← {t('categoryGroups')[expandedGroup] || expandedGroup}
+            </button>
+          )}
+          <TransactionList groups={selectedGroups} currency={displayCurrency} t={t} onNavigate={() => setSheetOpen(false)} />
+        </>
+      ) : (
+        <p className="text-muted" style={{ fontSize: 13 }}>{t('selectCategoryBody')}</p>
+      )}
+    </div>
+  );
+
   const budgetProgressItems = budgets
     .filter(b => parseFloat(b.amount) > 0)
     .map(b => {
@@ -292,6 +383,8 @@ export default function Analytics() {
 
   return (
     <div className="analytics-page page">
+      <div className="analytics-layout">
+      <div className="analytics-main">
       <div className="month-selector">
         <button className="btn-icon" onClick={prevMonth}><ChevronLeft size={20} /></button>
         <span className="month-label">{monthNames[month]} {year}</span>
@@ -312,10 +405,13 @@ export default function Analytics() {
               <button
                 className="btn btn-ghost"
                 style={{ marginBottom: 8, fontSize: 13 }}
-                onClick={() => setExpandedGroup(null)}
+                onClick={clearSelection}
               >
                 ← {t('categoryGroups')[expandedGroup] || expandedGroup}
               </button>
+            )}
+            {expandedGroup && !selectedCategory && (
+              <p className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>{t('tapSubcategoryHint')}</p>
             )}
             {categoryData.length === 0 ? (
               <p className="text-muted">{t('noDataMonth')}</p>
@@ -325,12 +421,8 @@ export default function Analytics() {
                   data={categoryData}
                   layout="vertical"
                   margin={{ left: 8, right: 16 }}
-                  onClick={(data) => {
-                    if (!expandedGroup && data?.activePayload?.[0]) {
-                      setExpandedGroup(data.activePayload[0].payload.name);
-                    }
-                  }}
-                  style={{ cursor: expandedGroup ? 'default' : 'pointer' }}
+                  onClick={handleBarClick}
+                  style={{ cursor: 'pointer' }}
                 >
                   <XAxis type="number" tick={{ fill: '#666', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="displayName" width={110} tick={{ fill: '#f0f0f0', fontSize: 12 }} axisLine={false} tickLine={false} />
@@ -343,7 +435,11 @@ export default function Analytics() {
                   />
                   <Bar dataKey="total" radius={[0, 4, 4, 0]}>
                     {categoryData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
+                      <Cell
+                        key={index}
+                        fill={entry.color}
+                        fillOpacity={expandedGroup && selectedCategory && entry.name !== selectedCategory ? 0.35 : 1}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -502,6 +598,33 @@ export default function Analytics() {
             )}
           </section>
         </>
+      )}
+      </div>
+
+      {/* Desktop: persistent sidebar */}
+      <aside className="analytics-sidebar">{transactionPanel}</aside>
+      </div>
+
+      {/* Mobile: floating button + bottom sheet */}
+      {expandedGroup && !loading && (
+        <button className="tx-fab" onClick={() => setSheetOpen(true)}>
+          <List size={18} />
+          <span className="tx-fab-label">
+            <span className="tx-fab-count">{t('nReceipts').replace('{n}', selectedCount)}</span>
+            <span className="tx-fab-total" style={{ fontFamily: 'var(--font-mono)' }}>{selectedTotal.toFixed(2)} {displayCurrency}</span>
+          </span>
+        </button>
+      )}
+      {sheetOpen && (
+        <div className="sheet-backdrop" onClick={() => setSheetOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <button className="sheet-close btn-icon btn-ghost-small" onClick={() => setSheetOpen(false)} aria-label="Close">
+              <X size={18} />
+            </button>
+            {transactionPanel}
+          </div>
+        </div>
       )}
     </div>
   );

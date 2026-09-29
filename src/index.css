@@ -1357,3 +1357,224 @@ a {
   padding: 0;
   white-space: nowrap;
 }
+
+/* ── Analytics: transaction panel (sidebar on desktop, sheet on mobile) ── */
+.analytics-layout {
+  display: block;
+}
+.analytics-sidebar {
+  display: none;
+}
+.tx-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tx-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tx-panel-title-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tx-panel-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.tx-panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.tx-panel-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.tx-panel-back {
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+.tx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tx-receipt {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.tx-receipt:hover {
+  border-color: #333;
+}
+.tx-receipt-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tx-receipt-store {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-receipt-date {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.tx-receipt-total {
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.tx-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.tx-items {
+  list-style: none;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tx-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.tx-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-item-cat {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.tx-item-amount {
+  flex-shrink: 0;
+}
+
+/* Floating button (mobile) */
+.tx-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 10px 12px;
+  border: 1px solid #a78bfa;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  font: inherit;
+  animation: fadeIn 150ms ease;
+}
+.tx-fab-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+.tx-fab-count {
+  font-size: 11px;
+  opacity: 0.85;
+}
+.tx-fab-total {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Bottom sheet (mobile) */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 400;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+@keyframes sheetUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.sheet {
+  position: relative;
+  width: 100%;
+  max-width: var(--max-w);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  padding: 10px 16px calc(20px + env(safe-area-inset-bottom));
+  animation: sheetUp 180ms ease;
+}
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: #333;
+  margin: 0 auto 12px;
+}
+.sheet-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+/* Desktop: two-column layout with sticky sidebar */
+@media (min-width: 900px) {
+  .analytics-page {
+    max-width: 920px;
+  }
+  .analytics-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 16px;
+    align-items: start;
+  }
+  .analytics-sidebar {
+    display: block;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px - 70px);
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .tx-fab,
+  .sheet-backdrop {
+    display: none;
+  }
+}
