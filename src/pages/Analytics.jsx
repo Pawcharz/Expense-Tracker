@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Pencil, X, List } from 'lucide-react';
 import TransactionList from '../components/TransactionList';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  LineChart, Line, CartesianGrid, Legend,
+  LineChart, Line, CartesianGrid, Legend, ComposedChart, ReferenceLine,
 } from 'recharts';
+import { KINDS, KIND_COLORS, normalizeKind } from '../lib/kinds';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
@@ -14,6 +16,7 @@ export default function Analytics() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { displayCurrency, rateTo, ratesReady } = useCurrency();
+  const navigate = useNavigate();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -23,6 +26,13 @@ export default function Analytics() {
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [kindFilter, setKindFilter] = useState('all');          // category chart filter
+
+  // Unusual / mandatory tracking
+  const [kindHistory, setKindHistory] = useState([]);            // 12 months of {label, unusual, mandatory, normal}
+  const [unusualYearly, setUnusualYearly] = useState(0);
+  const [unusualInput, setUnusualInput] = useState('');
+  const [editingUnusual, setEditingUnusual] = useState(false);
 
   // Last-30-days daily chart
   const [dailyItems, setDailyItems] = useState([]);
@@ -41,7 +51,12 @@ export default function Analytics() {
 
   useEffect(() => {
     loadLast30Days();
+    loadUnusualBudget();
   }, [displayCurrency, ratesReady]);
+
+  useEffect(() => {
+    loadKindHistory();
+  }, [month, year, displayCurrency, ratesReady]);
 
   useEffect(() => {
     loadAll();
@@ -106,6 +121,67 @@ export default function Analytics() {
     }));
   }
 
+  async function loadUnusualBudget() {
+    const { data } = await supabase
+      .from('user_settings')
+      .select('unusual_yearly_budget')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const v = parseFloat(data?.unusual_yearly_budget) || 0;
+    setUnusualYearly(v);
+    setUnusualInput(v ? String(v) : '');
+  }
+
+  async function saveUnusualBudget(value) {
+    const amount = parseFloat(value) || 0;
+    await supabase.from('user_settings').upsert(
+      { user_id: user.id, unusual_yearly_budget: amount },
+      { onConflict: 'user_id' }
+    );
+    setUnusualYearly(amount);
+  }
+
+  // Receipt totals per kind for the 12 months ending at the selected month.
+  async function loadKindHistory() {
+    const monthNamesShort = t('monthNamesShort');
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      let m = month - i, y = year;
+      while (m < 0) { m += 12; y--; }
+      months.push({ m, y });
+    }
+    const first = months[0];
+    const from = `${first.y}-${String(first.m + 1).padStart(2, '0')}-01`;
+    const toM = month === 11 ? 0 : month + 1;
+    const toY = month === 11 ? year + 1 : year;
+    const to = `${toY}-${String(toM + 1).padStart(2, '0')}-01`;
+
+    const { data } = await supabase
+      .from('receipts')
+      .select('date, total, currency, kind')
+      .eq('user_id', user.id)
+      .gte('date', from)
+      .lt('date', to);
+
+    const buckets = months.map(({ m, y }) => ({
+      key: `${y}-${m}`, label: `${monthNamesShort[m]} ${String(y).slice(2)}`,
+      normal: 0, unusual: 0, mandatory: 0,
+    }));
+    const idx = Object.fromEntries(buckets.map((b, i) => [b.key, i]));
+    (data || []).forEach(r => {
+      const d = new Date(r.date);
+      const b = buckets[idx[`${d.getFullYear()}-${d.getMonth()}`]];
+      if (!b) return;
+      b[normalizeKind(r.kind)] += (parseFloat(r.total) || 0) * rateTo(r.currency || 'PLN', displayCurrency);
+    });
+    setKindHistory(buckets.map(b => ({
+      ...b,
+      normal: parseFloat(b.normal.toFixed(2)),
+      unusual: parseFloat(b.unusual.toFixed(2)),
+      mandatory: parseFloat(b.mandatory.toFixed(2)),
+    })));
+  }
+
   async function loadBudgets() {
     const { data: groups } = await supabase.from('category_groups').select('*').order('name');
     if (groups) {
@@ -158,7 +234,7 @@ export default function Analytics() {
 
     const { data: receipts } = await supabase
       .from('receipts')
-      .select('id, store, date, currency')
+      .select('id, store, date, currency, kind')
       .eq('user_id', user.id)
       .gte('date', from)
       .lt('date', to);
@@ -180,6 +256,7 @@ export default function Analytics() {
         ...item,
         netPrice: (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1) - (parseFloat(item.discount) || 0),
         currency: r?.currency || 'PLN',
+        kind: normalizeKind(r?.kind),
         receipt: r ? { id: r.id, store: r.store, date: r.date } : { id: item.receipt_id, store: null, date: null },
       };
     });
@@ -295,10 +372,13 @@ export default function Analytics() {
     setTopItems(sorted);
   }
 
+  const toDispItem = (item) => Math.max(0, item.netPrice ?? (parseFloat(item.price) || 0)) * rateTo(item.currency || 'PLN', displayCurrency);
+  const kindItems = kindFilter === 'all' ? rawItems : rawItems.filter(i => i.kind === kindFilter);
+
   const categoryData = (() => {
-    const toDisp = (item) => Math.max(0, item.netPrice ?? (parseFloat(item.price) || 0)) * rateTo(item.currency || 'PLN', displayCurrency);
+    const toDisp = toDispItem;
     if (expandedGroup) {
-      const filtered = rawItems.filter(i => i.categories?.category_groups?.name === expandedGroup);
+      const filtered = kindItems.filter(i => i.categories?.category_groups?.name === expandedGroup);
       const map = {};
       filtered.forEach(item => {
         const catName = item.categories?.name || 'Uncategorized';
@@ -312,7 +392,7 @@ export default function Analytics() {
         .sort((a, b) => b.total - a.total);
     } else {
       const map = {};
-      rawItems.forEach(item => {
+      kindItems.forEach(item => {
         const groupName = item.categories?.category_groups?.name || 'Other';
         const color = item.categories?.category_groups?.color || '#71717a';
         if (!map[groupName]) map[groupName] = { name: groupName, displayName: t('categoryGroups')[groupName] || groupName, color, total: 0 };
@@ -331,7 +411,7 @@ export default function Analytics() {
     if (!expandedGroup) return [];
     const toDisp = (item) => Math.max(0, item.netPrice ?? (parseFloat(item.price) || 0)) * rateTo(item.currency || 'PLN', displayCurrency);
     const byReceipt = {};
-    rawItems.forEach(item => {
+    kindItems.forEach(item => {
       const gName = item.categories?.category_groups?.name || 'Other';
       if (gName !== expandedGroup) return;
       const cName = item.categories?.name || 'Uncategorized';
@@ -350,7 +430,7 @@ export default function Analytics() {
     return Object.values(byReceipt)
       .filter(g => g.total > 0)
       .sort((a, b) => new Date(b.receipt.date || 0) - new Date(a.receipt.date || 0));
-  }, [rawItems, expandedGroup, selectedCategory, displayCurrency, ratesReady]);
+  }, [rawItems, kindFilter, expandedGroup, selectedCategory, displayCurrency, ratesReady]);
 
   const selectedTotal = selectedGroups.reduce((s, g) => s + g.total, 0);
   const selectedCount = selectedGroups.length;
@@ -467,12 +547,64 @@ export default function Analytics() {
     setDailyGroups(prev => prev.includes(name) ? prev.filter(g => g !== name) : [...prev, name]);
   }
 
+  // ── Per-kind totals for the selected month (from line items, display currency) ──
+  const kindTotals = useMemo(() => {
+    const tot = { normal: 0, unusual: 0, mandatory: 0 };
+    const byGroupNormal = {};
+    const unusualByGroup = {};
+    rawItems.forEach(item => {
+      const amt = toDispItem(item);
+      tot[item.kind] += amt;
+      const g = item.categories?.category_groups?.name || 'Other';
+      if (item.kind === 'normal') byGroupNormal[g] = (byGroupNormal[g] || 0) + amt;
+      if (item.kind === 'unusual') {
+        if (!unusualByGroup[g]) unusualByGroup[g] = { name: g, color: item.categories?.category_groups?.color || '#71717a', total: 0 };
+        unusualByGroup[g].total += amt;
+      }
+    });
+    return {
+      ...tot,
+      byGroupNormal,
+      unusualGroups: Object.values(unusualByGroup).sort((a, b) => b.total - a.total),
+    };
+  }, [rawItems, displayCurrency, ratesReady]);
+
+  // Receipts of a given kind in the selected month, for the mandatory list.
+  const receiptsOfKind = (kind) => {
+    const map = {};
+    rawItems.forEach(item => {
+      if (item.kind !== kind) return;
+      const rid = item.receipt.id;
+      if (!map[rid]) map[rid] = { receipt: item.receipt, total: 0, items: [] };
+      map[rid].total += toDispItem(item);
+      map[rid].items.push({ id: item.id, name: item.name, amount: toDispItem(item) });
+    });
+    return Object.values(map).sort((a, b) => new Date(b.receipt.date || 0) - new Date(a.receipt.date || 0));
+  };
+  const mandatoryReceipts = useMemo(() => receiptsOfKind('mandatory'), [rawItems, displayCurrency, ratesReady]);
+
+  // Unusual: 12-month series with a centred running mean (±2 months) and the
+  // yearly budget spread evenly per month. Informational only — never "over".
+  const unusualSeries = useMemo(() => {
+    const vals = kindHistory.map(b => b.unusual);
+    const RADIUS = 2;
+    const running = vals.map((_, i) => {
+      const from = Math.max(0, i - RADIUS), to = Math.min(vals.length - 1, i + RADIUS);
+      let s = 0; for (let j = from; j <= to; j++) s += vals[j];
+      return parseFloat((s / (to - from + 1)).toFixed(2));
+    });
+    const data = kindHistory.map((b, i) => ({ label: b.label, unusual: b.unusual, running: running[i] }));
+    const avg12 = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    const monthlyBudget = unusualYearly > 0 ? unusualYearly / 12 : 0;
+    return { data, avg12, windowAvg: running[running.length - 1] || 0, monthlyBudget };
+  }, [kindHistory, unusualYearly]);
+
   const budgetProgressItems = budgets
     .filter(b => parseFloat(b.amount) > 0)
     .map(b => {
       const groupName = b.category_groups?.name || '';
       const color = b.category_groups?.color || '#94a3b8';
-      const spent = categoryData.find(c => c.name === groupName && !expandedGroup)?.total || 0;
+      const spent = kindTotals.byGroupNormal[groupName] || 0;
       const amount = parseFloat(b.amount);
       const pct = Math.min((spent / amount) * 100, 100);
       const over = spent > amount;
@@ -503,6 +635,18 @@ export default function Analytics() {
         <>
           <section className="analytics-section">
             <h3 className="section-title">{t('spendingByCategory')}</h3>
+            <div className="chip-row" style={{ marginBottom: 10 }}>
+              {['all', ...KINDS].map(k => (
+                <button
+                  key={k}
+                  className={`chip${kindFilter === k ? ' active' : ''}`}
+                  style={kindFilter === k && k !== 'all' ? { background: KIND_COLORS[k], borderColor: KIND_COLORS[k], color: '#fff' } : undefined}
+                  onClick={() => setKindFilter(k)}
+                >
+                  {k === 'all' ? t('kindFilterAll') : t('kindLabels')[k]}
+                </button>
+              ))}
+            </div>
             {expandedGroup && (
               <button
                 className="btn btn-ghost"
@@ -553,7 +697,7 @@ export default function Analytics() {
             <div className="section-header-row">
               <div>
                 <h3 className="section-title">{t('budgetsTitle')}</h3>
-                <span className="section-subtitle">{t('budgetsMonthly')}</span>
+                <span className="section-subtitle">{t('budgetsMonthlyNormal')}</span>
               </div>
               <button
                 className="btn-icon btn-ghost-small"
@@ -627,13 +771,179 @@ export default function Analytics() {
                 <div className="budget-totals-row">
                   <span>{t('totalSpent')}</span>
                   <span style={{ fontFamily: 'var(--font-mono)' }}>
-                    {categoryData.reduce((s, c) => s + c.total, 0).toFixed(2)}
+                    {kindTotals.normal.toFixed(2)}
                     {' / '}
                     {budgetProgressItems.reduce((s, b) => s + b.amount, 0).toFixed(2)} {displayCurrency}
                   </span>
                 </div>
               </div>
             )}
+          </section>
+
+
+          {/* ── Unusual / irregular purchases ── */}
+          <section className="analytics-section kind-section" style={{ borderColor: KIND_COLORS.unusual + '55' }}>
+            <div className="section-header-row">
+              <div>
+                <h3 className="section-title">{t('unusualTitle')}</h3>
+                <span className="section-subtitle">{t('unusualSubtitle')}</span>
+              </div>
+              <button
+                className="btn-icon btn-ghost-small"
+                onClick={() => setEditingUnusual(e => !e)}
+                title={editingUnusual ? t('doneBudgets') : t('editYearlyBudget')}
+              >
+                {editingUnusual ? <X size={16} /> : <Pencil size={16} />}
+              </button>
+            </div>
+
+            {editingUnusual && (
+              <div className="budget-edit-panel" style={{ marginBottom: 12 }}>
+                <div className="budget-edit-row">
+                  <div className="budget-edit-controls">
+                    <span className="cat-dot" style={{ background: KIND_COLORS.unusual }} />
+                    <span className="budget-edit-name">{t('yearlyBudget')}</span>
+                    <input
+                      type="number" min="0" step="1"
+                      className="form-input budget-edit-input"
+                      value={unusualInput}
+                      onChange={e => setUnusualInput(e.target.value)}
+                      onBlur={e => saveUnusualBudget(e.target.value)}
+                      placeholder="0"
+                    />
+                    <span className="budget-edit-currency">{displayCurrency}</span>
+                  </div>
+                  <span className="hint-text text-muted" style={{ fontSize: 12 }}>{t('yearlyBudgetHint')}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="kind-total-row">
+              <span>{t('thisMonthSpent')}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{kindTotals.unusual.toFixed(2)} {displayCurrency}</span>
+            </div>
+            {kindTotals.unusualGroups.length > 0 && (
+              <ul className="kind-breakdown">
+                {kindTotals.unusualGroups.map(g => (
+                  <li key={g.name}>
+                    <span className="cat-dot" style={{ background: g.color }} />
+                    <span className="kind-breakdown-name">{t('categoryGroups')[g.name] || g.name}</span>
+                    <span className="text-muted" style={{ fontFamily: 'var(--font-mono)' }}>{g.total.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="budget-totals-row">
+              <span>{t('normalPlusUnusual')}</span>
+              <span style={{ fontFamily: 'var(--font-mono)' }}>{(kindTotals.normal + kindTotals.unusual).toFixed(2)} {displayCurrency}</span>
+            </div>
+          </section>
+
+          {/* ── Unusual: running average vs yearly budget ── */}
+          <section className="analytics-section kind-section" style={{ borderColor: KIND_COLORS.unusual + '55' }}>
+            <h3 className="section-title">{t('unusualTrendTitle')}</h3>
+            <div className="kind-stats">
+              <div className="kind-stat">
+                <span className="kind-stat-label text-muted">{t('windowAvg')}</span>
+                <span className="kind-stat-value" style={{ fontFamily: 'var(--font-mono)' }}>{unusualSeries.windowAvg.toFixed(0)}</span>
+              </div>
+              <div className="kind-stat">
+                <span className="kind-stat-label text-muted">{t('twelveMonthAvg')}</span>
+                <span className="kind-stat-value" style={{ fontFamily: 'var(--font-mono)' }}>{unusualSeries.avg12.toFixed(0)}</span>
+              </div>
+              <div className="kind-stat">
+                <span className="kind-stat-label text-muted">{t('budgetPerMonth')}</span>
+                <span className="kind-stat-value" style={{ fontFamily: 'var(--font-mono)' }}>
+                  {unusualSeries.monthlyBudget > 0 ? unusualSeries.monthlyBudget.toFixed(0) : '—'}
+                </span>
+              </div>
+            </div>
+            {unusualSeries.monthlyBudget > 0 && (
+              <p className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                {unusualSeries.windowAvg <= unusualSeries.monthlyBudget
+                  ? t('unusualWithinAvg')
+                  : t('unusualAboveAvg').replace('{pct}', Math.round((unusualSeries.windowAvg / unusualSeries.monthlyBudget - 1) * 100))}
+              </p>
+            )}
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart data={unusualSeries.data} margin={{ left: 8, right: 16, top: 8 }}>
+                <CartesianGrid stroke="#222" strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fill: '#666', fontSize: 10 }} axisLine={false} tickLine={false} interval={1} />
+                <YAxis tick={{ fill: '#666', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} width={48} />
+                <Tooltip
+                  formatter={(v, name) => [`${Number(v).toFixed(2)} ${displayCurrency}`, name === 'unusual' ? t('kindLabels').unusual : t('runningAvg')]}
+                  contentStyle={{ background: '#141414', border: '1px solid #222', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
+                  labelStyle={{ color: '#f0f0f0' }}
+                />
+                <Bar dataKey="unusual" fill={KIND_COLORS.unusual} fillOpacity={0.55} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                <Line type="monotone" dataKey="running" stroke="#fbbf24" strokeWidth={2} dot={false} isAnimationActive={false} />
+                {unusualSeries.monthlyBudget > 0 && (
+                  <ReferenceLine y={unusualSeries.monthlyBudget} stroke="#f0f0f0" strokeDasharray="4 4" strokeOpacity={0.6} />
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </section>
+
+          {/* ── Mandatory / unavoidable costs ── */}
+          <section className="analytics-section kind-section" style={{ borderColor: KIND_COLORS.mandatory + '88' }}>
+            <div className="section-header-row">
+              <div>
+                <h3 className="section-title">{t('mandatoryTitle')}</h3>
+                <span className="section-subtitle">{t('mandatorySubtitle')}</span>
+              </div>
+            </div>
+
+            {mandatoryReceipts.length === 0 ? (
+              <p className="text-muted" style={{ fontSize: 13 }}>{t('noMandatory')}</p>
+            ) : (
+              <div className="tx-list" style={{ marginBottom: 12 }}>
+                {mandatoryReceipts.map(g => (
+                  <div key={g.receipt.id} className="tx-receipt" onClick={() => navigate(`/receipt/${g.receipt.id}`)}>
+                    <div className="tx-receipt-head">
+                      <span className="tx-receipt-store">{g.receipt.store || t('unknownStore')}</span>
+                      <span className="tx-receipt-date text-muted">
+                        {g.receipt.date ? new Date(g.receipt.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : ''}
+                      </span>
+                      <span className="tx-receipt-total" style={{ fontFamily: 'var(--font-mono)' }}>{g.total.toFixed(2)} {displayCurrency}</span>
+                      <ChevronRight size={14} className="tx-chevron" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="kind-total-row">
+              <span>{t('mandatoryTotal')}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{kindTotals.mandatory.toFixed(2)} {displayCurrency}</span>
+            </div>
+
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={kindHistory} margin={{ left: 8, right: 16, top: 8 }}>
+                <CartesianGrid stroke="#222" strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fill: '#666', fontSize: 10 }} axisLine={false} tickLine={false} interval={1} />
+                <YAxis tick={{ fill: '#666', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} width={48} />
+                <Tooltip
+                  formatter={v => [`${Number(v).toFixed(2)} ${displayCurrency}`, t('kindLabels').mandatory]}
+                  contentStyle={{ background: '#141414', border: '1px solid #222', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
+                  labelStyle={{ color: '#f0f0f0' }}
+                  cursor={{ fill: '#ffffff0a' }}
+                />
+                <Bar dataKey="mandatory" fill={KIND_COLORS.mandatory} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+
+            <div className="grand-total-row">
+              <div className="grand-total-breakdown text-muted">
+                <span style={{ color: KIND_COLORS.normal }}>●</span> {kindTotals.normal.toFixed(2)}
+                {' + '}<span style={{ color: KIND_COLORS.unusual }}>●</span> {kindTotals.unusual.toFixed(2)}
+                {' + '}<span style={{ color: KIND_COLORS.mandatory }}>●</span> {kindTotals.mandatory.toFixed(2)}
+              </div>
+              <div className="grand-total-main">
+                <span>{t('grandTotal')}</span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>
+                  {(kindTotals.normal + kindTotals.unusual + kindTotals.mandatory).toFixed(2)} {displayCurrency}
+                </span>
+              </div>
+            </div>
           </section>
 
           <section className="analytics-section">

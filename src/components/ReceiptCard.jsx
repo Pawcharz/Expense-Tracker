@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../hooks/useCurrency';
+import { useLanguage } from '../hooks/useLanguage';
+import { KIND_COLORS, normalizeKind } from '../lib/kinds';
 
 function formatReceiptDate(val) {
   if (!val) return '';
@@ -17,6 +19,8 @@ function formatReceiptDate(val) {
 export default function ReceiptCard({ receipt }) {
   const navigate = useNavigate();
   const { displayCurrency, toDisplay, format } = useCurrency();
+  const { t } = useLanguage();
+  const kind = normalizeKind(receipt.kind);
 
   const receiptCurrency = receipt.currency || 'PLN';
   const totalNum = receipt.total != null ? Number(receipt.total) : null;
@@ -28,7 +32,12 @@ export default function ReceiptCard({ receipt }) {
   return (
     <div className="receipt-card" onClick={() => navigate(`/receipt/${receipt.id}`)}>
       <div className="receipt-card-header">
-        <span className="receipt-store">{receipt.store || 'Unknown store'}</span>
+        <span className="receipt-store">
+          {receipt.store || 'Unknown store'}
+          {kind !== 'normal' && (
+            <span className="kind-badge" style={{ background: KIND_COLORS[kind] }}>{t('kindLabels')[kind]}</span>
+          )}
+        </span>
         <div style={{ textAlign: 'right' }}>
           <span className="receipt-total" style={{ fontFamily: 'var(--font-mono)' }}>
             {isForeign && totalNum != null ? '≈ ' : ''}{displayTotal}

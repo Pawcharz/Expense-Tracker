@@ -9,6 +9,7 @@ import { parseBankStatementImage, categorizeTransactions, getImageChunks } from 
 import { parseBankCsv } from '../lib/csvStatement';
 import { fetchCategoryData } from '../lib/categories';
 import { fetchExistingReceiptsAround, findDuplicate } from '../lib/duplicates';
+import KindSelector from '../components/KindSelector';
 
 function toDatetimeLocal(val) {
   const pad = n => String(n).padStart(2, '0');
@@ -75,6 +76,7 @@ export default function ImportStatement() {
         amount: tx.amount ? tx.amount.toFixed(2) : '',
         currency,
         is_expense: tx.is_expense,
+        kind: 'normal',
         category_group: tx.category_group,
         category: tx.category,
         duplicate: dup,
@@ -206,6 +208,7 @@ export default function ImportStatement() {
         date: new Date(r.date).toISOString(),
         total: parseFloat(parseFloat(r.amount || 0).toFixed(2)),
         currency: r.currency,
+        kind: r.kind || 'normal',
         image_url: imageUrl || null,
       }));
 
@@ -371,6 +374,7 @@ export default function ImportStatement() {
             </div>
           )}
 
+          <KindSelector value={r.kind} onChange={k => updateRow(r._id, { kind: k })} t={t} compact />
           <div className="import-row-meta">
             <input
               type="datetime-local"

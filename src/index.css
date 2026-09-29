@@ -1633,3 +1633,119 @@ a {
   text-align: right;
   color: var(--text-muted);
 }
+
+/* ── Expense kind selector & badge ── */
+.kind-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+}
+.kind-option {
+  padding: 8px 6px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.kind-option:hover {
+  color: var(--text);
+}
+.kind-option.active {
+  color: #fff;
+}
+.kind-selector-compact {
+  padding: 3px;
+  gap: 3px;
+}
+.kind-selector-compact .kind-option {
+  padding: 4px 4px;
+  font-size: 11px;
+}
+.kind-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  vertical-align: middle;
+}
+
+/* ── Kind sections in Analytics ── */
+.kind-section {
+  border-width: 1px;
+}
+.kind-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  padding: 6px 0 10px;
+}
+.kind-breakdown {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.kind-breakdown li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.kind-breakdown-name {
+  flex: 1;
+}
+.kind-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.kind-stat {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kind-stat-label {
+  font-size: 11px;
+}
+.kind-stat-value {
+  font-size: 16px;
+  font-weight: 600;
+}
+.grand-total-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.grand-total-breakdown {
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+.grand-total-main {
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 700;
+}

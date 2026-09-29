@@ -6,6 +6,7 @@ import { useLanguage } from '../hooks/useLanguage';
 import { useCurrency } from '../hooks/useCurrency';
 import { supabase } from '../lib/supabase';
 import { fetchCategoryData } from '../lib/categories';
+import KindSelector from '../components/KindSelector';
 
 export default function ManualEntry() {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ export default function ManualEntry() {
     return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
   });
   const [currency, setCurrency] = useState(displayCurrency || 'PLN');
+  const [kind, setKind] = useState('normal');
   const [items, setItems] = useState([{
     _id: 0, name: '', price: '', discount: 0, quantity: 1,
     category_group: 'Other', category: 'Uncategorized', raw_name: '',
@@ -88,6 +90,7 @@ export default function ManualEntry() {
           date: new Date(date).toISOString(),
           total: parseFloat(total.toFixed(2)),
           currency,
+          kind,
           image_url: null,
         })
         .select()
@@ -158,6 +161,13 @@ export default function ManualEntry() {
               ))}
             </select>
           </div>
+        </div>
+
+
+        <div className="form-group">
+          <label className="form-label">{t('kindLabel')}</label>
+          <KindSelector value={kind} onChange={setKind} t={t} />
+          <span className="hint-text text-muted" style={{ fontSize: '0.75rem', marginTop: 4 }}>{t('kindHints')[kind]}</span>
         </div>
 
         <div className="form-group">

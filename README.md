@@ -9,6 +9,7 @@ A progressive web app for scanning receipts with AI, tracking spending, and mana
 - **Bank statement import** — screenshot your bank/card transaction list or load the bank's CSV export and every row is saved as its own receipt; rows that match an existing receipt (same amount, same day) are flagged as duplicates and unchecked by default, with a softer warning for matches within ±2 days
 - **History with search** — browse all past receipts, search by store name or date
 - **Analytics** — spending charts with drill-down into category groups and subcategories; monthly budget tracking per group
+- **Expense kinds** — tag each receipt as normal, unusual (irregular purchases tracked against a yearly budget and a ±2-month running average) or mandatory (unavoidable, no limit); budgets count only normal spending, and the Analytics tab shows each kind in its own section plus a grand total
 - **Multi-language** — English and Polish UI; item names are translated to the user's chosen language at scan time
 - **PWA** — installable on Android and iOS, works offline for previously loaded data
 
@@ -94,6 +95,7 @@ Run the following scripts in order in the Supabase SQL editor:
 For an existing deployment, apply the incremental migration:
 
 3. `supabase/currency_quantity_migration.sql` — adds `receipts.currency`, `items.quantity`, and `user_settings.display_currency` columns (idempotent — uses `add column if not exists`)
+4. `supabase/expense_kind_migration.sql` — adds `receipts.kind` (normal / unusual / mandatory) and `user_settings.unusual_yearly_budget` (idempotent)
 
 ### Run locally
 

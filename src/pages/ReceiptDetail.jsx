@@ -7,6 +7,8 @@ import { useLanguage } from '../hooks/useLanguage';
 import { useCurrency } from '../hooks/useCurrency';
 import CategoryBadge from '../components/CategoryBadge';
 import { fetchCategoryData } from '../lib/categories';
+import KindSelector from '../components/KindSelector';
+import { KIND_COLORS, normalizeKind } from '../lib/kinds';
 
 function formatReceiptDate(val) {
   if (!val) return '';
@@ -60,6 +62,7 @@ export default function ReceiptDetail() {
   const [editStore, setEditStore] = useState('');
   const [editDate, setEditDate] = useState('');
   const [editCurrency, setEditCurrency] = useState('PLN');
+  const [editKind, setEditKind] = useState('normal');
   const [editItems, setEditItems] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -101,6 +104,7 @@ export default function ReceiptDetail() {
     setEditStore(receipt.store || '');
     setEditDate(toDatetimeLocal(receipt.date));
     setEditCurrency(receipt.currency || 'PLN');
+    setEditKind(normalizeKind(receipt.kind));
     setEditItems(items.map((item, i) => ({
       _id: i,
       name: item.name,
@@ -160,6 +164,7 @@ export default function ReceiptDetail() {
           date: new Date(editDate).toISOString(),
           total: parseFloat(editTotal.toFixed(2)),
           currency: editCurrency,
+          kind: editKind,
         })
         .eq('id', receipt.id);
       if (recErr) throw recErr;
@@ -310,10 +315,22 @@ export default function ReceiptDetail() {
         </div>
       )}
 
+      {editing && (
+        <div className="form-group">
+          <label className="form-label">{t('kindLabel')}</label>
+          <KindSelector value={editKind} onChange={setEditKind} t={t} />
+        </div>
+      )}
+
       {!editing && (
         <div className="detail-meta">
           <span className="text-muted">
             {formatReceiptDate(receipt.date)}
+            {normalizeKind(receipt.kind) !== 'normal' && (
+              <span className="kind-badge" style={{ background: KIND_COLORS[normalizeKind(receipt.kind)] }}>
+                {t('kindLabels')[normalizeKind(receipt.kind)]}
+              </span>
+            )}
           </span>
           <div style={{ textAlign: 'right' }}>
             <span className="detail-total" style={{ fontFamily: 'var(--font-mono)' }}>
