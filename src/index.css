@@ -1919,3 +1919,14 @@ a {
 .cropper-actions .btn {
   flex: 1;
 }
+
+/* ── Clipboard paste ── */
+.paste-hint {
+  display: none;
+  font-size: 12px;
+  margin-top: 6px;
+  text-align: center;
+}
+@media (hover: hover) and (pointer: fine) {
+  .paste-hint { display: block; }
+}

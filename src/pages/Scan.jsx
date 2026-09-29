@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Image, RefreshCw, Landmark } from 'lucide-react';
+import { Camera, Image, RefreshCw, Landmark, ClipboardPaste } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
 import { parseReceiptImage, getImageChunks } from '../lib/gemini';
 import ImageCropper from '../components/ImageCropper';
+import { usePasteImage } from '../hooks/usePasteImage';
 
 export default function Scan() {
   const { user } = useAuth();
@@ -18,11 +19,19 @@ export default function Scan() {
   const [pendingNav, setPendingNav] = useState(null);  // navigate args held until user decides
   const [cropFile, setCropFile] = useState(null);      // image awaiting crop before processing
 
-  // Every photo (camera or gallery) goes through the crop dialog first.
+  // Every photo (camera, gallery or clipboard) goes through the crop dialog first.
   function processFile(file) {
     if (!file) return;
     setError('');
     setCropFile(file);
+  }
+
+  // Ctrl+V anywhere on this page, or the explicit paste button.
+  const { pasteFromClipboard } = usePasteImage(processFile, !loading && !cropFile);
+  async function handlePasteClick() {
+    if (loading) return;
+    const res = await pasteFromClipboard();
+    if (!res.ok) setError(t(res.reason === 'no-image' ? 'pasteNoImage' : 'pasteUnsupported'));
   }
 
   async function runPipeline(file) {
@@ -202,6 +211,18 @@ export default function Scan() {
         >
           {t('enterManually')}
         </button>
+
+        <button
+          className="btn btn-ghost paste-btn"
+          style={{ marginTop: '12px', fontSize: '13px' }}
+          onClick={handlePasteClick}
+          disabled={loading}
+          title={t('pasteHint')}
+        >
+          <ClipboardPaste size={16} />
+          {t('pasteFromClipboard')}
+        </button>
+        <span className="paste-hint text-muted">{t('pasteHint')}</span>
 
         {error && (
           <div className="error-box">

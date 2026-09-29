@@ -37,6 +37,10 @@ export default {
   cropReset: 'Zaznacz wszystko',
   cropSkip: 'Użyj całego zdjęcia',
   cropUse: 'Przytnij i skanuj',
+  pasteFromClipboard: 'Wklej ze schowka',
+  pasteHint: 'Na komputerze możesz też nacisnąć Ctrl+V (⌘V), aby wkleić zrzut ekranu.',
+  pasteNoImage: 'Brak obrazu w schowku. Najpierw zrób zrzut ekranu, potem wklej.',
+  pasteUnsupported: 'Dostęp do schowka jest tu niedostępny. Użyj Ctrl+V (⌘V).',
 
   // Bank statement import
   importStatement: 'Importuj wyciąg z banku',

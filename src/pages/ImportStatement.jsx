@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Image, FileSpreadsheet, AlertTriangle, Copy, Trash2, ChevronLeft } from 'lucide-react';
+import { Image, FileSpreadsheet, AlertTriangle, Copy, Trash2, ChevronLeft, ClipboardPaste } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { useCurrency } from '../hooks/useCurrency';
@@ -10,6 +10,7 @@ import { parseBankCsv } from '../lib/csvStatement';
 import { fetchCategoryData } from '../lib/categories';
 import { fetchExistingReceiptsAround, findDuplicate } from '../lib/duplicates';
 import KindSelector from '../components/KindSelector';
+import { usePasteImage } from '../hooks/usePasteImage';
 
 function toDatetimeLocal(val) {
   const pad = n => String(n).padStart(2, '0');
@@ -154,6 +155,14 @@ export default function ImportStatement() {
     e.target.value = '';
   }
 
+  // Ctrl+V on the pick screen, or the explicit paste button.
+  const { pasteFromClipboard } = usePasteImage(processFile, stage === 'pick' && !loading);
+  async function handlePasteClick() {
+    if (loading) return;
+    const res = await pasteFromClipboard();
+    if (!res.ok) setError(t(res.reason === 'no-image' ? 'pasteNoImage' : 'pasteUnsupported'));
+  }
+
   async function openPicker() {
     if (loading) return;
     if (window.showOpenFilePicker) {
@@ -278,6 +287,19 @@ export default function ImportStatement() {
             style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
             onChange={handleCsvChange}
           />
+
+
+          <button
+            className="btn btn-ghost paste-btn"
+            style={{ marginTop: '12px', fontSize: '13px' }}
+            onClick={handlePasteClick}
+            disabled={loading}
+            title={t('pasteHint')}
+          >
+            <ClipboardPaste size={16} />
+            {t('pasteFromClipboard')}
+          </button>
+          <span className="paste-hint text-muted">{t('pasteHint')}</span>
 
           <button className="btn btn-ghost" style={{ marginTop: '12px', fontSize: '13px' }} onClick={() => navigate('/')} disabled={loading}>
             <ChevronLeft size={16} />

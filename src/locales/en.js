@@ -37,6 +37,10 @@ export default {
   cropReset: 'Select all',
   cropSkip: 'Use full image',
   cropUse: 'Crop & scan',
+  pasteFromClipboard: 'Paste from clipboard',
+  pasteHint: 'On a computer you can also press Ctrl+V (⌘V) to paste a screenshot.',
+  pasteNoImage: 'No image on the clipboard. Take a screenshot first, then paste.',
+  pasteUnsupported: 'Clipboard access is not available here. Press Ctrl+V (⌘V) instead.',
 
   // Bank statement import
   importStatement: 'Import bank statement',
