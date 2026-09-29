@@ -414,3 +414,88 @@ export async function parseBankStatementImage(chunks, language = 'en') {
   const mergedText = await mergeOcrTexts(ocrTexts, apiKey);
   return parseStatementText(mergedText, language, apiKey, todayIso, chunks.length);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CSV transactions: text-only merchant cleanup + categorisation
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CATEGORIZE_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    results: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          index: { type: 'integer' },
+          merchant: { type: 'string' },
+          category_group: { type: 'string' },
+          category: { type: 'string' },
+        },
+        required: ['index', 'merchant', 'category_group', 'category'],
+      },
+    },
+  },
+  required: ['results'],
+};
+
+function buildCategorizePrompt(language) {
+  const nameLang = language === 'pl' ? 'Polish' : 'English';
+  const groups = GROUP_NAMES.join(', ');
+  const categories = CATEGORY_NAMES.join(', ');
+  return `You are given a JSON list of bank transactions exported from a bank as CSV. For EACH transaction return one result with the same index.
+
+OUTPUT LANGUAGE: ${nameLang}.
+
+Rules:
+- merchant: a clean, human-readable merchant / counterparty name in ${nameLang}. Strip processor noise ("CARD PAYMENT", "PŁATNOŚĆ KARTĄ", "TRANSAKCJA KARTĄ", "BLIK", city names, terminal ids, reference numbers, dates, "*", trailing country codes). e.g. "UBER *TRIP HELP.UBER.COM" → "Uber", "ZABKA Z1234 K.1 WARSZAWA" → "Żabka". For transfers use the counterparty name or the transfer title, whichever identifies the payee better.
+- category_group: pick EXACTLY one from: ${groups}
+- category: pick EXACTLY one that belongs to the chosen group from: ${categories}
+  Guidance: Uber/Bolt/FreeNow rides → Transport > Taxi / Rideshare. Uber Eats/Glovo/Wolt/Bolt Food/Pyszne → Dining & Takeout > Delivery. Supermarkets (Biedronka, Lidl, Żabka, Kaufland, Carrefour, Auchan, Tesco) → Groceries > Pantry & Dry Goods unless obvious otherwise. Netflix/Spotify/YouTube → Digital & Subscriptions > Entertainment Streaming. Pharmacies (Apteka) → Health & Medical > Pharmacy. Fuel stations (Orlen, BP, Shell, Circle K) → Transport > Fuel. Bank fees/commissions → Finance & Fees > Bank Fees. Rent / czynsz → Housing > Rent. Incoming money (direction "in") and own-account transfers → Other > Uncategorized. Unknown → Other > Uncategorized.
+- Return exactly one result per input index; never skip or add indices.`;
+}
+
+// Main entry point for CSV rows (called by ImportStatement.jsx).
+// `transactions` come from parseBankCsv(); returns them enriched with
+// merchant, category_group and category. Processed in batches to stay well
+// under output limits for large exports.
+export async function categorizeTransactions(transactions, language = 'en') {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const BATCH = 60;
+  const enriched = transactions.map(tx => ({
+    ...tx,
+    merchant: tx.raw_description,
+    category_group: 'Other',
+    category: 'Uncategorized',
+  }));
+
+  for (let start = 0; start < transactions.length; start += BATCH) {
+    const slice = transactions.slice(start, start + BATCH);
+    const payload = slice.map((tx, i) => ({
+      index: start + i,
+      description: tx.raw_description,
+      amount: tx.amount,
+      direction: tx.is_expense ? 'out' : 'in',
+      date: tx.date,
+    }));
+    const result = await geminiCall(
+      apiKey,
+      [{ text: `${buildCategorizePrompt(language)}\n\nTransactions:\n${JSON.stringify(payload)}` }],
+      {
+        temperature: 0.1,
+        maxOutputTokens: 16384,
+        responseMimeType: 'application/json',
+        responseSchema: CATEGORIZE_RESPONSE_SCHEMA,
+      }
+    );
+    const { results } = JSON.parse(result);
+    for (const r of results || []) {
+      const target = enriched[r.index];
+      if (!target) continue;
+      target.merchant = (r.merchant || '').trim() || target.merchant;
+      target.category_group = r.category_group || target.category_group;
+      target.category = r.category || target.category;
+    }
+  }
+  return enriched;
+}

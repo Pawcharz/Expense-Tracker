@@ -35,8 +35,11 @@ export default {
   // Bank statement import
   importStatement: 'Import bank statement',
   importStatementTitle: 'Import Bank Statement',
-  importStatementSubtitle: 'Upload a screenshot of your bank or card transaction list. Each row becomes a separate receipt.',
+  importStatementSubtitle: 'Upload a screenshot or a CSV export of your bank transactions. Each row becomes a separate receipt.',
   chooseScreenshot: 'Choose screenshot',
+  chooseCsv: 'Load CSV export',
+  readingCsv: 'Reading CSV…',
+  categorizingTransactions: 'Categorising transactions…',
   backToScan: 'Back',
   readingStatement: 'Reading transactions…',
   checkingDuplicates: 'Checking for duplicates…',

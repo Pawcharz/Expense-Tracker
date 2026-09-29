@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Image, AlertTriangle, Copy, Trash2, ChevronLeft } from 'lucide-react';
+import { Image, FileSpreadsheet, AlertTriangle, Copy, Trash2, ChevronLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { useCurrency } from '../hooks/useCurrency';
 import { supabase } from '../lib/supabase';
-import { parseBankStatementImage, getImageChunks } from '../lib/gemini';
+import { parseBankStatementImage, categorizeTransactions, getImageChunks } from '../lib/gemini';
+import { parseBankCsv } from '../lib/csvStatement';
 import { fetchCategoryData } from '../lib/categories';
 import { fetchExistingReceiptsAround, findDuplicate } from '../lib/duplicates';
 
@@ -16,12 +17,25 @@ function toDatetimeLocal(val) {
   return `${safe.getFullYear()}-${pad(safe.getMonth() + 1)}-${pad(safe.getDate())}T${pad(safe.getHours())}:${pad(safe.getMinutes())}`;
 }
 
+// Bank exports are frequently Windows-1250 rather than UTF-8. Decode strictly
+// as UTF-8 first and fall back to CP1250 when that fails.
+async function readTextFile(file) {
+  const buf = await file.arrayBuffer();
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+  } catch {
+    try { return new TextDecoder('windows-1250').decode(buf); }
+    catch { return new TextDecoder('utf-8').decode(buf); }
+  }
+}
+
 export default function ImportStatement() {
   const { user } = useAuth();
   const { language, t } = useLanguage();
   const { displayCurrency, supportedCurrencies } = useCurrency();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const csvInputRef = useRef(null);
 
   const [stage, setStage] = useState('pick');   // 'pick' | 'review'
   const [loading, setLoading] = useState(false);
@@ -41,6 +55,65 @@ export default function ImportStatement() {
       setCategoryMap(cm);
     });
   }, []);
+
+  // Shared by the screenshot and CSV paths: run duplicate detection and
+  // build the editable review rows.
+  async function buildRows(parsed) {
+    setLoadingMsg(t('checkingDuplicates'));
+    const existing = await fetchExistingReceiptsAround(user.id, parsed.transactions);
+
+    const fallbackCurrency = parsed.currency || displayCurrency || 'PLN';
+    const nextRows = parsed.transactions.map((tx, i) => {
+      const currency = tx.currency || fallbackCurrency;
+      const dup = findDuplicate({ ...tx, currency }, existing);
+      return {
+        _id: i,
+        merchant: tx.merchant,
+        raw_description: tx.raw_description,
+        date: toDatetimeLocal(tx.date),
+        dateInferred: !tx.date,
+        amount: tx.amount ? tx.amount.toFixed(2) : '',
+        currency,
+        is_expense: tx.is_expense,
+        category_group: tx.category_group,
+        category: tx.category,
+        duplicate: dup,
+        // Exact duplicates and incoming money are unchecked by default.
+        selected: dup?.level !== 'exact' && tx.is_expense,
+      };
+    });
+
+    setRows(nextRows);
+    setStage('review');
+  }
+
+  async function processCsv(file) {
+    if (!file) return;
+    setLoading(true);
+    setError('');
+    setLoadingMsg(t('readingCsv'));
+    try {
+      const text = await readTextFile(file);
+      const parsed = parseBankCsv(text);
+      if (!parsed.transactions.length) throw new Error(t('noTransactionsFound'));
+
+      setLoadingMsg(t('categorizingTransactions'));
+      const transactions = await categorizeTransactions(parsed.transactions, language);
+      setImageUrl(null);
+      await buildRows({ currency: parsed.currency, transactions });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('failedToProcessStatement'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleCsvChange(e) {
+    const file = e.target.files?.[0];
+    if (file) processCsv(file);
+    e.target.value = '';
+  }
 
   async function processFile(file) {
     if (!file) return;
@@ -64,32 +137,7 @@ export default function ImportStatement() {
       const parsed = await parseBankStatementImage(chunks, language);
       if (!parsed.transactions.length) throw new Error(t('noTransactionsFound'));
 
-      setLoadingMsg(t('checkingDuplicates'));
-      const existing = await fetchExistingReceiptsAround(user.id, parsed.transactions);
-
-      const fallbackCurrency = parsed.currency || displayCurrency || 'PLN';
-      const nextRows = parsed.transactions.map((tx, i) => {
-        const currency = tx.currency || fallbackCurrency;
-        const dup = findDuplicate({ ...tx, currency }, existing);
-        return {
-          _id: i,
-          merchant: tx.merchant,
-          raw_description: tx.raw_description,
-          date: toDatetimeLocal(tx.date),
-          dateInferred: !tx.date,
-          amount: tx.amount ? tx.amount.toFixed(2) : '',
-          currency,
-          is_expense: tx.is_expense,
-          category_group: tx.category_group,
-          category: tx.category,
-          duplicate: dup,
-          // Exact duplicates and incoming money are unchecked by default.
-          selected: dup?.level !== 'exact' && tx.is_expense,
-        };
-      });
-
-      setRows(nextRows);
-      setStage('review');
+      await buildRows(parsed);
     } catch (err) {
       console.error(err);
       setError(err.message || t('failedToProcessStatement'));
@@ -214,6 +262,18 @@ export default function ImportStatement() {
             accept="image/*"
             style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
             onChange={handleFileChange}
+          />
+
+          <button className="btn btn-secondary" style={{ marginTop: '10px' }} onClick={() => !loading && csvInputRef.current?.click()} disabled={loading}>
+            <FileSpreadsheet size={18} />
+            <span>{t('chooseCsv')}</span>
+          </button>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+            onChange={handleCsvChange}
           />
 
           <button className="btn btn-ghost" style={{ marginTop: '12px', fontSize: '13px' }} onClick={() => navigate('/')} disabled={loading}>

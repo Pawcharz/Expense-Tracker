@@ -35,8 +35,11 @@ export default {
   // Bank statement import
   importStatement: 'Importuj wyciąg z banku',
   importStatementTitle: 'Import wyciągu z banku',
-  importStatementSubtitle: 'Wgraj zrzut ekranu z listą transakcji z banku lub karty. Każdy wiersz stanie się osobnym paragonem.',
+  importStatementSubtitle: 'Wgraj zrzut ekranu lub eksport CSV transakcji z banku. Każdy wiersz stanie się osobnym paragonem.',
   chooseScreenshot: 'Wybierz zrzut ekranu',
+  chooseCsv: 'Wczytaj eksport CSV',
+  readingCsv: 'Czytam CSV…',
+  categorizingTransactions: 'Kategoryzuję transakcje…',
   backToScan: 'Wróć',
   readingStatement: 'Czytam transakcje…',
   checkingDuplicates: 'Sprawdzam duplikaty…',
